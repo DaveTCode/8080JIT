@@ -383,11 +383,11 @@ namespace SpaceInvadersJIT.Generator
                 while (!hasLooped)
                 {
                     var (instructions, instructionLength) = operationAtIndex[programCounter];
+                    methodIL.MarkLabel(cpuInternal.ProgramLabels[programCounter]);
 
 #if DEBUG
                     methodIL.EmitWriteLine($"{programCounter:X4} - {instructions}");
 #endif
-                    methodIL.MarkLabel(cpuInternal.ProgramLabels[programCounter]);
                     instructions.Emit(methodIL, cpuInternal, memoryBusField, ioHandlerField);
 
                     seenRomIndexes.Add(programCounter);
