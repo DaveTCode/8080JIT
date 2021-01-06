@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpaceInvadersJIT", "SpaceInvadersJIT\SpaceInvadersJIT.csproj", "{911EDFF8-63AE-4832-A80A-F049B42262AA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpaceInvadersJIT.Tests", "SpaceInvadersJIT.Tests\SpaceInvadersJIT.Tests.csproj", "{D8F6BE24-9893-44C6-A87A-CB040224BBEA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{664CAC5D-F6D8-4057-893C-6A203F4DDC1F}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		README.md = README.md
+		SpaceInvadersJIT.sln.DotSettings = SpaceInvadersJIT.sln.DotSettings
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{911EDFF8-63AE-4832-A80A-F049B42262AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{911EDFF8-63AE-4832-A80A-F049B42262AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{911EDFF8-63AE-4832-A80A-F049B42262AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{911EDFF8-63AE-4832-A80A-F049B42262AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8F6BE24-9893-44C6-A87A-CB040224BBEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8F6BE24-9893-44C6-A87A-CB040224BBEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8F6BE24-9893-44C6-A87A-CB040224BBEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8F6BE24-9893-44C6-A87A-CB040224BBEA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {464FAB31-F288-432B-936F-26B37664399B}
+	EndGlobalSection
+EndGlobal

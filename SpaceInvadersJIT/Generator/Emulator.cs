@@ -1,0 +1,444 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
+using SpaceInvadersJIT._8080;
+
+namespace SpaceInvadersJIT.Generator
+{
+    internal static class Emulator
+    {
+        /// <summary>
+        /// Generates methods which return the 16 bit value from two 8 bit 
+        /// register pairs (BC, DE, HL)
+        /// </summary>
+        /// <param name="typeBuilder">Access to the type to add the method</param>
+        /// <param name="name">The name of the function</param>
+        /// <param name="regHighByte">The high byte (H in HL)</param>
+        /// <param name="regLowByte">The low byte (L in HL)</param>
+        /// <returns>A method info which constitutes the simple function</returns>
+        private static MethodBuilder CreateRegisterPairAccess(TypeBuilder typeBuilder, string name,
+            FieldInfo regHighByte, FieldInfo regLowByte)
+        {
+            var method = typeBuilder.DefineMethod(name, MethodAttributes.Public, CallingConventions.Standard,
+                typeof(ushort), Array.Empty<Type>());
+            method.SetImplementationFlags(MethodImplAttributes.IL | MethodImplAttributes.AggressiveInlining);
+            var methodIL = method.GetILGenerator();
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, regHighByte);
+            methodIL.Emit(OpCodes.Ldc_I4_8);
+            methodIL.Emit(OpCodes.Shl);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, regLowByte);
+            methodIL.Emit(OpCodes.Add);
+            methodIL.Emit(OpCodes.Ret);
+
+            return method;
+        }
+
+        private static MethodBuilder CreateRegisterPairSet(TypeBuilder typeBuilder, string name, FieldInfo regHighByte,
+            FieldInfo regLowByte)
+        {
+            var method = typeBuilder.DefineMethod(name, MethodAttributes.Public, CallingConventions.Standard,
+                null, new[] {typeof(ushort)});
+            method.SetImplementationFlags(MethodImplAttributes.IL | MethodImplAttributes.AggressiveInlining);
+            var methodIL = method.GetILGenerator();
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Conv_U1);
+            methodIL.Emit(OpCodes.Stfld, regLowByte);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_8);
+            methodIL.Emit(OpCodes.Shr);
+            methodIL.Emit(OpCodes.Conv_U1);
+            methodIL.Emit(OpCodes.Stfld, regHighByte);
+            methodIL.Emit(OpCodes.Ret);
+
+            return method;
+        }
+
+        private static MethodBuilder CreateFlagRegister(TypeBuilder typeBuilder, CpuInternalBuilders internals)
+        {
+            var method = typeBuilder.DefineMethod("GetFlagRegister", MethodAttributes.Public,
+                CallingConventions.Standard,
+                typeof(byte), Type.EmptyTypes);
+            method.SetImplementationFlags(MethodImplAttributes.IL | MethodImplAttributes.AggressiveInlining);
+            var methodIL = method.GetILGenerator();
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, internals.SignFlag);
+            methodIL.Emit(OpCodes.Ldc_I4_7);
+            methodIL.Emit(OpCodes.Shl);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, internals.ZeroFlag);
+            methodIL.Emit(OpCodes.Ldc_I4_6);
+            methodIL.Emit(OpCodes.Shl);
+            methodIL.Emit(OpCodes.Or);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, internals.AuxCarryFlag);
+            methodIL.Emit(OpCodes.Ldc_I4_4);
+            methodIL.Emit(OpCodes.Shl);
+            methodIL.Emit(OpCodes.Or);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, internals.ParityFlag);
+            methodIL.Emit(OpCodes.Ldc_I4_2);
+            methodIL.Emit(OpCodes.Shl);
+            methodIL.Emit(OpCodes.Or);
+            methodIL.Emit(OpCodes.Ldc_I4_2);
+            methodIL.Emit(OpCodes.Or);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
+            methodIL.Emit(OpCodes.Or);
+            methodIL.Emit(OpCodes.Ret);
+
+            return method;
+        }
+
+        private static MethodBuilder CreateSetFlagRegister(TypeBuilder typeBuilder, CpuInternalBuilders internals)
+        {
+            var method = typeBuilder.DefineMethod("SetFlagRegister", MethodAttributes.Public,
+                CallingConventions.Standard, null, new[] {typeof(byte)});
+            method.SetImplementationFlags(MethodImplAttributes.IL | MethodImplAttributes.AggressiveInlining);
+
+            var methodIL = method.GetILGenerator();
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_1);
+            methodIL.Emit(OpCodes.And);
+            methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
+
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_4);
+            methodIL.Emit(OpCodes.And);
+            methodIL.Emit(OpCodes.Ldc_I4_2);
+            methodIL.Emit(OpCodes.Shr_Un);
+            methodIL.Emit(OpCodes.Stfld, internals.ParityFlag);
+
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_S, 0b0001_0000);
+            methodIL.Emit(OpCodes.And);
+            methodIL.Emit(OpCodes.Ldc_I4_4);
+            methodIL.Emit(OpCodes.Shr_Un);
+            methodIL.Emit(OpCodes.Stfld, internals.AuxCarryFlag);
+
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_S, 0b0100_0000);
+            methodIL.Emit(OpCodes.And);
+            methodIL.Emit(OpCodes.Ldc_I4_6);
+            methodIL.Emit(OpCodes.Shr_Un);
+            methodIL.Emit(OpCodes.Stfld, internals.ZeroFlag);
+
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Ldc_I4_S, 0b1000_0000);
+            methodIL.Emit(OpCodes.And);
+            methodIL.Emit(OpCodes.Ldc_I4_7);
+            methodIL.Emit(OpCodes.Shr_Un);
+            methodIL.Emit(OpCodes.Stfld, internals.SignFlag);
+
+            methodIL.Emit(OpCodes.Ret);
+
+            return method;
+        }
+
+        /// <summary>
+        /// For any given offset into the program we can generate the requisite
+        /// IL based upon the opcode (first byte of the span) and any operands 
+        /// (further bytes from the span)
+        /// 
+        /// This returns the opcodes to emit (with args) and the number of bytes 
+        /// consumed
+        /// </summary>
+        /// <param name="program">
+        /// The full ROM (not just the portion we're looking at)
+        /// </param>
+        /// <param name="programCounter">
+        /// Indicates what index into the ROM we are generating an instruction for
+        /// </param>
+        /// <param name="internals">
+        /// Provides references to all internal fields/methods on this class
+        /// for e.g. register access
+        /// </param>
+        /// <param name="jumpLabels">
+        /// Provides labels for every address in the ROM for jump/call commands
+        /// </param>
+        /// <returns></returns>
+        private static (IEmitter, byte) GenerateILForOpcode(byte[] program, uint programCounter,
+            CpuInternalBuilders internals, Label[] jumpLabels)
+        {
+            var opcodeByte = program[programCounter];
+            var operand1 = program[(programCounter + 1) % program.Length];
+            var operand2 = program[(programCounter + 2) % program.Length];
+            var operandWord = (ushort) ((operand2 << 8) + operand1);
+            var opcode = Opcodes8080Decoder.Decode(opcodeByte);
+
+            IEmitter emitter = opcode switch
+            {
+                Opcodes8080.NOP => new NOPEmitter(),
+                Opcodes8080.LXI => new LXIEmitter(opcodeByte, operand1, operand2, operandWord),
+                Opcodes8080.STAX => new STAXEmitter(opcodeByte),
+                Opcodes8080.INX => new INXDCXEmitter(opcodeByte),
+                Opcodes8080.INR => new INRDCREmitter(opcodeByte),
+                Opcodes8080.DCR => new INRDCREmitter(opcodeByte),
+                Opcodes8080.MVI => new MVIEmitter(opcodeByte, operand1),
+                Opcodes8080.RLC => new RLCEmitter(),
+                Opcodes8080.DAD => new DADEmitter(opcodeByte),
+                Opcodes8080.LDAX => new LDAXEmitter(opcodeByte),
+                Opcodes8080.DCX => new INXDCXEmitter(opcodeByte),
+                Opcodes8080.RRC => new RRCEmitter(),
+                Opcodes8080.RAL => new RALEmitter(),
+                Opcodes8080.RAR => new RAREmitter(),
+                Opcodes8080.SHLD => new SHLDEmitter(operandWord),
+                Opcodes8080.DAA => new NOPEmitter(), // TODO - Actually implement DAA after handling aux carry flag
+                Opcodes8080.LHLD => new LHLDEmitter(operandWord),
+                Opcodes8080.CMA => new CMAEmitter(),
+                Opcodes8080.STA => new STAEmitter(operandWord),
+                Opcodes8080.STC => new STCEmitter(),
+                Opcodes8080.LDA => new LDAEmitter(operandWord),
+                Opcodes8080.CMC => new CMCEmitter(),
+                Opcodes8080.MOV => new MOVEmitter(opcodeByte),
+                Opcodes8080.HLT => new HLTEmitter(),
+                Opcodes8080.ADD => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.ADC => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.SUB => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.SBB => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.ANA => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.XRA => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.ORA => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.CMP => new General8BitALUEmitter(opcodeByte, opcode),
+                Opcodes8080.RNZ => new RetEmitter(opcodeByte, internals.ZeroFlag, false),
+                Opcodes8080.POP => new POPEmitter(opcodeByte),
+                Opcodes8080.JNZ => new JumpOnFlagEmitter(opcodeByte, internals.ZeroFlag, false, jumpLabels[operandWord % program.Length],
+                    operandWord),
+                Opcodes8080.JMP => new JMPEmitter(operandWord, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.CNZ => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.ZeroFlag, false, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.PUSH => new PUSHEmitter(opcodeByte),
+                Opcodes8080.ADI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RST => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), null, false, jumpLabels[opcodeByte & 0b0011_1000]),
+                Opcodes8080.RZ => new RetEmitter(opcodeByte, internals.ZeroFlag, true),
+                Opcodes8080.RET => new RetEmitter(opcodeByte, null, false),
+                Opcodes8080.JZ => new JumpOnFlagEmitter(opcodeByte, internals.ZeroFlag, true, jumpLabels[operandWord % program.Length],
+                    operandWord),
+                Opcodes8080.CZ => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.ZeroFlag, true, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.CALL => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), null, false, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.ACI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RNC => new RetEmitter(opcodeByte, internals.CarryFlag, false),
+                Opcodes8080.JNC => new JumpOnFlagEmitter(opcodeByte, internals.CarryFlag, false,
+                    jumpLabels[operandWord % program.Length], operandWord),
+                Opcodes8080.OUT => new OutEmitter(operand1),
+                Opcodes8080.CNC => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.CarryFlag, false, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.SUI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RC => new RetEmitter(opcodeByte, internals.ZeroFlag, true),
+                Opcodes8080.JC => new JumpOnFlagEmitter(opcodeByte, internals.CarryFlag, true, jumpLabels[operandWord % program.Length],
+                    operandWord),
+                Opcodes8080.IN => new InEmitter(operand1),
+                Opcodes8080.CC => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.CarryFlag, true, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.SBI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RPO => new RetEmitter(opcodeByte, internals.ParityFlag, false),
+                Opcodes8080.JPO => new JumpOnFlagEmitter(opcodeByte, internals.ParityFlag, false,
+                    jumpLabels[operandWord % program.Length], operandWord),
+                Opcodes8080.XTHL => new XTHLEmitter(),
+                Opcodes8080.CPO => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.ParityFlag, false, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.ANI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RPE => new RetEmitter(opcodeByte, internals.ParityFlag, true),
+                Opcodes8080.PCHL => new PCHLEmitter(),
+                Opcodes8080.JPE => new JumpOnFlagEmitter(opcodeByte, internals.ParityFlag, true,
+                    jumpLabels[operandWord % program.Length], operandWord),
+                Opcodes8080.XCHG => new XCHGEmitter(),
+                Opcodes8080.CPE => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.ParityFlag, true, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.XRI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RP => new RetEmitter(opcodeByte, internals.SignFlag, false),
+                Opcodes8080.JP => new JumpOnFlagEmitter(opcodeByte, internals.SignFlag, false, jumpLabels[operandWord % program.Length],
+                    operandWord),
+                Opcodes8080.DI => new UpdateInterruptEnableEmitter(false),
+                Opcodes8080.CP => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.SignFlag, false, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.ORI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                Opcodes8080.RM => new RetEmitter(opcodeByte, internals.SignFlag, true),
+                Opcodes8080.SPHL => new SPHLEmitter(),
+                Opcodes8080.JM => new JumpOnFlagEmitter(opcodeByte, internals.SignFlag, true, jumpLabels[operandWord % program.Length],
+                    operandWord),
+                Opcodes8080.EI => new UpdateInterruptEnableEmitter(true),
+                Opcodes8080.CM => new CallEmitter(opcodeByte, (ushort)(programCounter + opcode.Length()), internals.SignFlag, true, jumpLabels[operandWord % program.Length]),
+                Opcodes8080.CPI => new General8BitALUImmediateEmitter(opcode, opcodeByte, operand1),
+                _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, "Invalid 8080 opcode")
+            };
+
+            return (emitter, opcode.Length());
+        }
+
+        private static void CreateConstructor(TypeBuilder typeBuilder, FieldBuilder memoryBusField,
+            FieldBuilder ioHandlerField)
+        {
+            var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard,
+                new[] {typeof(MemoryBus8080), typeof(IOHandler)});
+            var methodIL = constructorBuilder.GetILGenerator();
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_1);
+            methodIL.Emit(OpCodes.Stfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldarg_0);
+            methodIL.Emit(OpCodes.Ldarg_2);
+            methodIL.Emit(OpCodes.Stfld, ioHandlerField);
+            methodIL.Emit(OpCodes.Ret);
+        }
+
+        /// <summary>
+        /// Given a ROM loaded as an array of bytes this constructs an emulator with
+        /// a "Run" function and all relevant flags & registers.
+        /// 
+        /// TODO - More explanation about how we turn the program into IL
+        /// </summary>
+        /// 
+        /// <param name="program">
+        /// The loaded ROM
+        /// </param>
+        ///
+        /// <param name="memoryBus">
+        /// This will provide ReadByte & WriteByte functionality for the
+        /// entire 16 bit address space.
+        /// </param>
+        /// 
+        /// <param name="ioHandler">
+        /// This will provide IO/OUT function for the whole 8 bit port space
+        /// </param>
+        /// 
+        /// <returns>
+        /// An object which contains references to all the field info and 
+        /// method info required to make use of (and inspect the running 
+        /// state) of the emulator.
+        /// </returns>
+        internal static Cpu8080 CreateEmulator(byte[] program, MemoryBus8080 memoryBus, IOHandler ioHandler)
+        {
+            var asmName = new AssemblyName("Emulator");
+            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
+            var moduleBuilder = assemblyBuilder.DefineDynamicModule("Execute");
+            var typeBuilder = moduleBuilder.DefineType("Emulator", TypeAttributes.Public);
+
+            var cpuInternal = new CpuInternalBuilders
+            {
+                A = typeBuilder.DefineField("A", typeof(byte), FieldAttributes.Public),
+                B = typeBuilder.DefineField("B", typeof(byte), FieldAttributes.Public),
+                C = typeBuilder.DefineField("C", typeof(byte), FieldAttributes.Public),
+                D = typeBuilder.DefineField("D", typeof(byte), FieldAttributes.Public),
+                E = typeBuilder.DefineField("E", typeof(byte), FieldAttributes.Public),
+                H = typeBuilder.DefineField("H", typeof(byte), FieldAttributes.Public),
+                L = typeBuilder.DefineField("L", typeof(byte), FieldAttributes.Public),
+                SignFlag = typeBuilder.DefineField("SignFlag", typeof(bool), FieldAttributes.Public),
+                ZeroFlag = typeBuilder.DefineField("ZeroFlag", typeof(bool), FieldAttributes.Public),
+                AuxCarryFlag = typeBuilder.DefineField("AuxCarryFlag", typeof(bool), FieldAttributes.Public),
+                ParityFlag = typeBuilder.DefineField("ParityFlag", typeof(bool), FieldAttributes.Public),
+                CarryFlag = typeBuilder.DefineField("CarryFlag", typeof(bool), FieldAttributes.Public),
+                StackPointer = typeBuilder.DefineField("StackPointer", typeof(ushort), FieldAttributes.Public),
+                InterruptEnable = typeBuilder.DefineField("InterruptEnable", typeof(bool), FieldAttributes.Public),
+            };
+            cpuInternal.HL = CreateRegisterPairAccess(typeBuilder, "HL", cpuInternal.H, cpuInternal.L);
+            cpuInternal.BC = CreateRegisterPairAccess(typeBuilder, "BC", cpuInternal.B, cpuInternal.C);
+            cpuInternal.DE = CreateRegisterPairAccess(typeBuilder, "DE", cpuInternal.D, cpuInternal.E);
+            cpuInternal.SetHL = CreateRegisterPairSet(typeBuilder, "SetHL", cpuInternal.H, cpuInternal.L);
+            cpuInternal.SetBC = CreateRegisterPairSet(typeBuilder, "SetHL", cpuInternal.B, cpuInternal.C);
+            cpuInternal.SetDE = CreateRegisterPairSet(typeBuilder, "SetHL", cpuInternal.D, cpuInternal.E);
+            cpuInternal.GetFlagRegister = CreateFlagRegister(typeBuilder, cpuInternal);
+            cpuInternal.SetFlagRegister = CreateSetFlagRegister(typeBuilder, cpuInternal);
+
+            var memoryBusField = typeBuilder.DefineField("_memoryBus", typeof(MemoryBus8080), FieldAttributes.Private);
+            var ioHandlerField = typeBuilder.DefineField("_ioHandler", typeof(IOHandler), FieldAttributes.Private);
+            CreateConstructor(typeBuilder, memoryBusField, ioHandlerField);
+
+            // TODO - Generate a function which returns the byte for all the flags
+
+            // TODO - Any other common functions
+
+            #region Emulation Method
+
+            var methodBuilder = typeBuilder.DefineMethod("Run", MethodAttributes.Public, CallingConventions.Standard);
+            var methodIL = methodBuilder.GetILGenerator();
+
+            // We emit a label for each 8080 opcode to make it possible to jump
+            // to arbitrary addresses
+            cpuInternal.ProgramLabels = program.Select(_ => methodIL.DefineLabel()).ToArray();
+
+            // Then we create the IL for every position in the program, whether
+            // that position will ever be considered code or not
+            var operationAtIndex = program
+                .Select((_, ix) => GenerateILForOpcode(program, (uint) ix, cpuInternal, cpuInternal.ProgramLabels)).ToArray();
+            var seenRomIndexes = new HashSet<int>(program.Length);
+
+            // Finally we actually generate a program, this amounts to the following steps:
+            // 1. Find the next program counter position which has not yet been processed
+            // 2. Emit a label for that program counter position
+            // 3. Emit the CLR IL commands for that operation
+            // 4. Increment the program counter to the next opcode
+            // 5. Continue that process until a previously processed opcode is found and then emit a branch to that label (looping the program)
+            // 6. Repeat 1-5 until there are no program counter values left to process
+            var programCounter = 0;
+            while (seenRomIndexes.Count != program.Length)
+            {
+                var hasLooped = false;
+                while (!hasLooped)
+                {
+                    var (instructions, instructionLength) = operationAtIndex[programCounter];
+
+#if DEBUG
+                    methodIL.EmitWriteLine($"{programCounter:X4} - {instructions}");
+#endif
+                    methodIL.MarkLabel(cpuInternal.ProgramLabels[programCounter]);
+                    instructions.Emit(methodIL, cpuInternal, memoryBusField, ioHandlerField);
+
+                    seenRomIndexes.Add(programCounter);
+                    programCounter = (programCounter + instructionLength) % program.Length;
+
+                    // If this segment of the program rejoins the main program
+                    // then it should branch back into it and we can start on
+                    // the next segment
+                    if (seenRomIndexes.Contains(programCounter))
+                    {
+                        methodIL.Emit(OpCodes.Br, cpuInternal.ProgramLabels[programCounter]);
+                        hasLooped = true;
+                    }
+                }
+
+                // Find the next segment which has not yet been processed
+                programCounter = Enumerable.Range(0, program.Length).FirstOrDefault(ix => !seenRomIndexes.Contains(ix));
+            }
+
+            #endregion
+
+            var t = typeBuilder.CreateType();
+
+            Debug.Assert(t != null, nameof(t) + " != null");
+            return new Cpu8080
+            {
+                Internals = new Cpu8080Internals
+                {
+                    A = t.GetField("A"),
+                    B = t.GetField("B"),
+                    C = t.GetField("C"),
+                    D = t.GetField("D"),
+                    E = t.GetField("E"),
+                    H = t.GetField("H"),
+                    L = t.GetField("L"),
+                    BC = t.GetMethod("BC"),
+                    DE = t.GetMethod("DE"),
+                    HL = t.GetMethod("HL"),
+                    StackPointer = t.GetField("StackPointer"),
+                    SignFlag = t.GetField("SignFlag"),
+                    ZeroFlag = t.GetField("ZeroFlag"),
+                    AuxCarryFlag = t.GetField("AuxCarryFlag"),
+                    ParityFlag = t.GetField("ParityFlag"),
+                    CarryFlag = t.GetField("CarryFlag"),
+                    GetFlagRegister = t.GetMethod("GetFlagRegister"),
+                    SetFlagRegister = t.GetMethod("SetFlagRegister"),
+                    InterruptEnable = t.GetField("InterruptEnable"),
+                },
+                Emulator = Activator.CreateInstance(t, memoryBus, ioHandler),
+                Run = t.GetMethod("Run"),
+            };
+        }
+    }
+}

@@ -1,0 +1,135 @@
+[*.cs]
+#Core editorconfig formatting - indentation
+#use soft tabs (spaces) for indentation
+indent_style = space
+
+#Formatting - new line options
+
+#require members of object initializers to be on the same line
+csharp_new_line_before_members_in_object_initializers = false
+#require braces to be on a new line for object_collection_array_initializers, control_blocks, types, and methods (also known as "Allman" style)
+
+#Formatting - organize using options
+
+#sort System.* using directives alphabetically, and place them before other usings
+dotnet_sort_system_directives_first = true
+
+#Formatting - spacing options
+
+#require NO space between a cast and the value
+#require a space after a keyword in a control flow statement such as a for loop
+csharp_space_after_keywords_in_control_flow_statements = true
+#remove space within empty argument list parentheses
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+#remove space between method call name and opening parenthesis
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+#do not place space characters after the opening parenthesis and before the closing parenthesis of a method call
+csharp_space_between_method_call_parameter_list_parentheses = false
+#place a space character after the opening parenthesis and before the closing parenthesis of a method declaration parameter list.
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+
+#Style - Code block preferences
+
+#prefer curly braces even for one line of code
+csharp_prefer_braces = true:suggestion
+
+#Style - expression bodied member options
+
+#prefer expression-bodied members for properties
+csharp_style_expression_bodied_properties = true:suggestion
+
+#Style - expression level options
+
+#prefer the language keyword for member access expressions, instead of the type name, for types that have a keyword to represent them
+dotnet_style_predefined_type_for_member_access = true:suggestion
+
+#Style - Expression-level  preferences
+
+#prefer objects to be initialized using object initializers when possible
+dotnet_style_object_initializer = true:suggestion
+#prefer inferred tuple element names
+dotnet_style_prefer_inferred_tuple_names = true:suggestion
+
+#Style - implicit and explicit types
+
+#prefer var over explicit type in all cases, unless overridden by another code style rule
+csharp_style_var_elsewhere = true:suggestion
+#prefer var is used to declare variables with built-in system types such as int
+csharp_style_var_for_built_in_types = true:suggestion
+#prefer var when the type is already mentioned on the right-hand side of a declaration expression
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+#Style - language keyword and framework type options
+
+#prefer the language keyword for local variables, method parameters, and class members, instead of the type name, for types that have a keyword to represent them
+dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
+
+#Style - modifier options
+
+#prefer accessibility modifiers to be declared except for public interface members. This will currently not differ from always and will act as future proofing for if C# adds default interface methods.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+
+#Style - Modifier preferences
+
+#when this rule is set to a list of modifiers, prefer the specified ordering.
+csharp_preferred_modifier_order = public, private, protected, internal, new, abstract, virtual, sealed, override, static, readonly, extern, unsafe, volatile, async:suggestion
+
+#Style - qualification options
+
+#prefer fields not to be prefaced with this. or Me. in Visual Basic
+dotnet_style_qualification_for_field = false:suggestion
+
+# Microsoft .NET properties
+dotnet_style_parentheses_in_arithmetic_binary_operators = never_if_unnecessary:none
+dotnet_style_parentheses_in_other_binary_operators = never_if_unnecessary:none
+dotnet_style_parentheses_in_relational_binary_operators = never_if_unnecessary:none
+dotnet_style_qualification_for_event = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+
+# ReSharper properties
+resharper_braces_for_for = not_required
+resharper_braces_for_foreach = not_required
+resharper_braces_for_ifelse = not_required_for_both
+resharper_braces_for_while = not_required
+resharper_braces_redundant = true
+resharper_method_or_operator_body = block_body
+resharper_use_heuristics_for_body_style = true
+
+# ReSharper inspection severities
+resharper_arrange_accessor_owner_body_highlighting = suggestion
+resharper_arrange_method_or_operator_body_highlighting = none
+resharper_arrange_redundant_parentheses_highlighting = hint
+resharper_arrange_this_qualifier_highlighting = hint
+resharper_arrange_type_member_modifiers_highlighting = hint
+resharper_arrange_type_modifiers_highlighting = hint
+resharper_built_in_type_reference_style_for_member_access_highlighting = hint
+resharper_built_in_type_reference_style_highlighting = hint
+resharper_enforce_do_while_statement_braces_highlighting = none
+resharper_enforce_fixed_statement_braces_highlighting = none
+resharper_enforce_foreach_statement_braces_highlighting = none
+resharper_enforce_for_statement_braces_highlighting = none
+resharper_enforce_if_statement_braces_highlighting = none
+resharper_enforce_lock_statement_braces_highlighting = none
+resharper_enforce_using_statement_braces_highlighting = none
+resharper_enforce_while_statement_braces_highlighting = none
+resharper_redundant_base_qualifier_highlighting = warning
+resharper_remove_redundant_braces_highlighting = none
+resharper_suggest_var_or_type_built_in_types_highlighting = hint
+resharper_suggest_var_or_type_elsewhere_highlighting = hint
+resharper_suggest_var_or_type_simple_types_highlighting = hint
+
+[*.proto]
+indent_style = tab
+indent_size = tab
+tab_width = 4
+
+[*.{asax,ascx,aspx,axaml,c,c++,cc,cginc,compute,cp,cpp,cs,css,cu,cuh,cxx,h,hh,hlsl,hlsli,hlslinc,hpp,hxx,inc,inl,ino,ipp,master,mpp,mq4,mq5,mqh,paml,skin,tpp,usf,ush,vb,xaml,xamlx,xoml}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+[*.{appxmanifest,axml,build,config,cshtml,csproj,dbml,discomap,dtd,htm,html,js,json,jsproj,jsx,lsproj,njsproj,nuspec,proj,props,razor,resjson,resw,resx,StyleCop,targets,tasks,ts,tsx,vbproj,xml,xsd}]
+indent_style = space
+indent_size = 2
+tab_width = 2
