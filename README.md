@@ -7,9 +7,7 @@ project)
 
 ## TODO
 
-- Parity Flag
-- Aux Carry Flag
-- ~60 missing instructions
+- Aux Carry Flag & DAA instruction
 - Cycle tracking
 - Interrupts
 - Rendering

@@ -1,9 +1,8 @@
 ﻿using System;
-using SpaceInvadersJIT._8080;
-using SpaceInvadersJIT.Generator;
+using JIT8080.Generator;
 using Xunit;
 
-namespace SpaceInvadersJIT.Tests.Opcodes
+namespace JIT8080.Tests.Opcodes
 {
     public class ExchangeTests
     {
@@ -13,7 +12,7 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestXCHGOpcode(byte h, byte l, byte d, byte e)
         {
             var rom = new byte[] {0xEB, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.D.SetValue(emulator.Emulator, d);
@@ -33,10 +32,10 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestXTHLOpcode(byte h, byte l, byte mem1, byte mem2)
         {
             var rom = new byte[] {0xE3, 0x76};
-            var memoryBus = new MemoryBus8080(rom);
+            var memoryBus = new TestMemoryBus(rom);
             memoryBus.WriteByte(mem1, 0x3500);
             memoryBus.WriteByte(mem2, 0x3501);
-            var emulator = Emulator.CreateEmulator(rom, memoryBus, new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.StackPointer.SetValue(emulator.Emulator, (ushort)0x3500);
@@ -56,8 +55,8 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestSPHLOpcode(byte h, byte l, ushort result)
         {
             var rom = new byte[] {0xF9, 0x76};
-            var memoryBus = new MemoryBus8080(rom);
-            var emulator = Emulator.CreateEmulator(rom, memoryBus, new IOHandler());
+            var memoryBus = new TestMemoryBus(rom);
+            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.StackPointer.SetValue(emulator.Emulator, (ushort)0x1234);

@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "SpaceInvadersJIT": {
+      "commandName": "Project"
+    },
+    "Space Invaders (Rom)": {
+      "commandName": "Project",
+      "commandLineArgs": "..\\..\\..\\..\\roms\\real\\invaders.rom"
+    }
+  }
+}

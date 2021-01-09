@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SpaceInvadersJIT._8080
+namespace JIT8080._8080
 {
     /// <summary>
     /// All the different opcodes that are used in an 8080 processor

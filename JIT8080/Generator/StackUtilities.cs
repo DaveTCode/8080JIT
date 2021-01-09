@@ -1,6 +1,6 @@
 ﻿using System.Reflection.Emit;
 
-namespace SpaceInvadersJIT.Generator
+namespace JIT8080.Generator
 {
     internal static class StackUtilities
     {
@@ -150,7 +150,7 @@ namespace SpaceInvadersJIT.Generator
             methodIL.Emit(OpCodes.Ldc_I4_S, msb);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, stackPointer);
-            methodIL.Emit(OpCodes.Call, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
 
             IncDecStackPointer(methodIL, stackPointer, OpCodes.Sub);
 
@@ -159,7 +159,7 @@ namespace SpaceInvadersJIT.Generator
             methodIL.Emit(OpCodes.Ldc_I4_S, lsb);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, stackPointer);
-            methodIL.Emit(OpCodes.Call, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
         }
     }
 }

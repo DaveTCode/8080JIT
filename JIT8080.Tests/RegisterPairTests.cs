@@ -1,9 +1,8 @@
 using System;
-using SpaceInvadersJIT._8080;
-using SpaceInvadersJIT.Generator;
+using JIT8080.Generator;
 using Xunit;
 
-namespace SpaceInvadersJIT.Tests
+namespace JIT8080.Tests
 {
     public class RegisterPairTests
     {
@@ -11,7 +10,7 @@ namespace SpaceInvadersJIT.Tests
         public void TestHL()
         {
             var rom = new byte[] { 0x76 };
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
 
             Assert.Equal((ushort)0, emulator.Internals.HL.Invoke(emulator.Emulator, Array.Empty<object>()));
             emulator.Internals.H.SetValue(emulator.Emulator, (byte)1);
@@ -24,7 +23,7 @@ namespace SpaceInvadersJIT.Tests
         public void TestBC()
         {
             var rom = new byte[] { 0x76 };
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
 
             Assert.Equal((ushort)0, emulator.Internals.BC.Invoke(emulator.Emulator, Array.Empty<object>()));
             emulator.Internals.B.SetValue(emulator.Emulator, (byte)1);
@@ -37,7 +36,7 @@ namespace SpaceInvadersJIT.Tests
         public void TestDE()
         {
             var rom = new byte[] { 0x76 };
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
 
             Assert.Equal((ushort)0, emulator.Internals.DE.Invoke(emulator.Emulator, Array.Empty<object>()));
             emulator.Internals.D.SetValue(emulator.Emulator, (byte)1);

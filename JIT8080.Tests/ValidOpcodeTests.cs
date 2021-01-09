@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using SpaceInvadersJIT._8080;
-using SpaceInvadersJIT.Generator;
+using JIT8080.Generator;
 using Xunit;
 
-namespace SpaceInvadersJIT.Tests
+namespace JIT8080.Tests
 {
     /// <summary>
     /// This class ensures that all possible combinations of opcode generate 
@@ -24,7 +23,7 @@ namespace SpaceInvadersJIT.Tests
             program[3] = opcode;
             program[4] = 0x6;
             program[0x49] = 0x76; // HLT
-            var emulator = Emulator.CreateEmulator(program, new MemoryBus8080(program), new IOHandler());
+            var emulator = Emulator.CreateEmulator(program, new TestMemoryBus(program), new TestIOHandler(), new TestRenderer());
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
         }
 

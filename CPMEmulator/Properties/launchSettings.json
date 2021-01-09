@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "8080PRE.COM": {
+      "commandName": "Project",
+      "commandLineArgs": "..\\..\\..\\..\\roms\\test\\8080PRE.COM"
+    },
+    "TST8080.COM": {
+      "commandName": "Project",
+      "commandLineArgs": "..\\..\\..\\..\\roms\\test\\TST8080.COM"
+    },
+    "test.com": {
+      "commandName": "Project",
+      "commandLineArgs": "..\\..\\..\\..\\roms\\test\\test.com"
+    }
+  }
+}

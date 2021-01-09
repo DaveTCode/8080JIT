@@ -1,4 +1,4 @@
-﻿namespace SpaceInvadersJIT._8080
+﻿namespace JIT8080._8080
 {
     internal enum Register
     {

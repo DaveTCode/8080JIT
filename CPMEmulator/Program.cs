@@ -1,10 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using JIT8080.Generator;
 
-[assembly:InternalsVisibleTo("SpaceInvadersJIT.Tests")]
-namespace SpaceInvadersJIT
+namespace CPMEmulator
 {
     internal class Program
     {
@@ -13,10 +11,10 @@ namespace SpaceInvadersJIT
             var rom = args.Length switch
             {
                 > 0 => File.ReadAllBytes(args[0]),
-                _ => new byte[] { 0x04, 0x00, 0x00, 0x76 }//File.ReadAllBytes(Path.Combine("..", "..", "..", "..", "roms", "test", "intro.bin")).AsSpan(0, 0x2000).ToArray(),
+                _ => new byte[] { 0x04, 0x00, 0x00, 0x76 }
             };
-            var application = new SpaceInvadersApplication(rom);
-            var emulator = Emulator.CreateEmulator(rom, application, application, application);
+            var application = new CPMApplication(rom);
+            var emulator = Emulator.CreateEmulator(application.CompleteProgram(), application, application, application, 0x100);
 
             Console.WriteLine("Emulator Created");
             var runDelegate = (Action) emulator.Run.CreateDelegate(typeof(Action), emulator.Emulator);

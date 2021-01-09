@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SpaceInvadersJIT._8080;
-using Xunit;
+﻿using Xunit;
 
 namespace SpaceInvadersJIT.Tests
 {
@@ -14,7 +8,7 @@ namespace SpaceInvadersJIT.Tests
         public void TestMemoryBusReadWrite()
         {
             var program = new byte[0x2000];
-            var memoryBus = new MemoryBus8080(program);
+            var memoryBus = new SpaceInvadersApplication(program);
 
             for (ushort ii = 0; ii < ushort.MaxValue; ii++)
             {

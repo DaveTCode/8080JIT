@@ -1,9 +1,8 @@
 ﻿using System;
-using SpaceInvadersJIT._8080;
-using SpaceInvadersJIT.Generator;
+using JIT8080.Generator;
 using Xunit;
 
-namespace SpaceInvadersJIT.Tests.Opcodes
+namespace JIT8080.Tests.Opcodes
 {
     public class ArithmeticTests
     {
@@ -14,7 +13,8 @@ namespace SpaceInvadersJIT.Tests.Opcodes
             bool carryFlag)
         {
             var rom = new byte[] {opcode, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator =
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             switch (opcode)
             {
                 case 0x09:
@@ -49,7 +49,8 @@ namespace SpaceInvadersJIT.Tests.Opcodes
             bool expectedZeroFlag, bool expectedCarryFlag, bool expectedParityFlag, bool expectedAuxCarryFlag)
         {
             var rom = new byte[] {0x88, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator =
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Internals.A.SetValue(emulator.Emulator, a);
             emulator.Internals.B.SetValue(emulator.Emulator, operand);
             emulator.Internals.CarryFlag.SetValue(emulator.Emulator, carryFlag);
@@ -59,8 +60,31 @@ namespace SpaceInvadersJIT.Tests.Opcodes
             Assert.Equal(expectedSignFlag, emulator.Internals.SignFlag.GetValue(emulator.Emulator));
             Assert.Equal(expectedZeroFlag, emulator.Internals.ZeroFlag.GetValue(emulator.Emulator));
             Assert.Equal(expectedCarryFlag, emulator.Internals.CarryFlag.GetValue(emulator.Emulator));
-            //Assert.Equal(expectedParityFlag, emulator.Internals.ParityFlag.GetValue(emulator.Emulator));
+            Assert.Equal(expectedParityFlag, emulator.Internals.ParityFlag.GetValue(emulator.Emulator));
             //Assert.Equal(expectedAuxCarryFlag, emulator.Internals.AuxCarryFlag.GetValue(emulator.Emulator));
+        }
+
+        [Theory]
+        [InlineData(0xE6, 0x00, 0x00, 0x00, false, false, false, true, true, false)] // ANI
+        [InlineData(0xE6, 0xFF, 0x00, 0x00, false, false, false, true, true, false)] // ANI
+        [InlineData(0xE6, 0x3A, 0x0F, 0x0A, false, false, false, false, true, false)] // ANI
+        public void Test8BitImmediateOpcodes(byte opcode, byte a, byte operand, byte expected, bool prevCarry,
+            bool carry, bool sign, bool zero, bool parity, bool auxCarry)
+        {
+            var rom = new byte[] {opcode, operand, 0x76};
+            var emulator =
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            emulator.Internals.A.SetValue(emulator.Emulator, a);
+            emulator.Internals.CarryFlag.SetValue(emulator.Emulator, prevCarry);
+
+            emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
+
+            Assert.Equal(expected, emulator.Internals.A.GetValue(emulator.Emulator));
+            Assert.Equal(sign, emulator.Internals.SignFlag.GetValue(emulator.Emulator));
+            Assert.Equal(zero, emulator.Internals.ZeroFlag.GetValue(emulator.Emulator));
+            Assert.Equal(carry, emulator.Internals.CarryFlag.GetValue(emulator.Emulator));
+            Assert.Equal(parity, emulator.Internals.ParityFlag.GetValue(emulator.Emulator));
+            //Assert.Equal(auxCarry, emulator.Internals.AuxCarryFlag.GetValue(emulator.Emulator));
         }
     }
 }

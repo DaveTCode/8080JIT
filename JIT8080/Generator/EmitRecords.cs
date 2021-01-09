@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Reflection.Emit;
-using SpaceInvadersJIT._8080;
-using OpCodes = System.Reflection.Emit.OpCodes;
+using JIT8080._8080;
 
-namespace SpaceInvadersJIT.Generator
+namespace JIT8080.Generator
 {
     internal interface IEmitter
     {
@@ -343,24 +342,6 @@ namespace SpaceInvadersJIT.Generator
         public override string ToString() => "CMC";
     }
 
-    internal class JMPEmitter : IEmitter
-    {
-        private readonly ushort _address;
-        private readonly Label _jumpLabel;
-
-        internal JMPEmitter(ushort address, Label jumpLabel)
-        {
-            _address = address;
-            _jumpLabel = jumpLabel;
-        }
-
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField) =>
-            methodIL.Emit(OpCodes.Br, _jumpLabel);
-
-        public override string ToString() => $"JMP {_address:X4}";
-    }
-
     internal class INXDCXEmitter : IEmitter
     {
         private readonly byte _opcode;
@@ -473,8 +454,8 @@ namespace SpaceInvadersJIT.Generator
             };
 
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Call, regPairMethod);
@@ -616,7 +597,7 @@ namespace SpaceInvadersJIT.Generator
                 _ => throw new ArgumentOutOfRangeException()
             };
 
-            
+
             if (field == null)
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
@@ -653,13 +634,12 @@ namespace SpaceInvadersJIT.Generator
                 methodIL.Emit(OpCodes.Stfld, field);
             }
 
-            // Handle zero flag based on value of accumulator
+            // Handle flag updates
             FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, result);
-
-            // Handle sign flag based on value of accumulator
             FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, result);
+            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, result);
 
-            // TODO - Handle parity/aux carry flags on increment
+            // TODO - Handle aux carry flag on increment
         }
 
         public override string ToString() => $"{(_incOrDec == OpCodes.Ldc_I4_1 ? "INR" : "DEC")} {_register}";
@@ -922,9 +902,10 @@ namespace SpaceInvadersJIT.Generator
             // Handle flag based on result
             FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, byteResult);
             FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, byteResult);
-            FlagUtilities.SetCarryFlagFromLocal(methodIL, internals.CarryFlag, result);
+            FlagUtilities.SetCarryFlagFrom8BitLocal(methodIL, internals.CarryFlag, result);
+            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, byteResult);
 
-            // TODO - Handle aux carry & parity flags
+            // TODO - Handle aux carry
         }
 
         public override string ToString() => $"{_opcode} {_operand:X2}";
@@ -1092,7 +1073,8 @@ namespace SpaceInvadersJIT.Generator
             // Handle flags based on value of accumulator/local
             FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, byteResult);
             FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, byteResult);
-            FlagUtilities.SetCarryFlagFromLocal(methodIL, internals.CarryFlag, result);
+            FlagUtilities.SetCarryFlagFrom8BitLocal(methodIL, internals.CarryFlag, result);
+            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, byteResult);
 
             // TODO - Handle Carry/AuxCarry & Parity flags
         }
@@ -1113,14 +1095,14 @@ namespace SpaceInvadersJIT.Generator
             FieldBuilder ioHandlerField)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.L);
             methodIL.Emit(OpCodes.Ldc_I4, _address);
             methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.H);
             methodIL.Emit(OpCodes.Ldc_I4, _address + 1);
             methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
@@ -1163,32 +1145,61 @@ namespace SpaceInvadersJIT.Generator
     {
         private readonly byte _opcode;
         private readonly FieldBuilder _flagField;
+        private readonly MethodBuilder _flagMethod;
         private readonly bool _flagValue;
         private readonly Label _jumpLabel;
         private readonly ushort _address;
 
-        internal JumpOnFlagEmitter(byte opcode, FieldBuilder flagField, bool flagValue, Label jumpLabel, ushort address)
+        internal JumpOnFlagEmitter(byte opcode, Label jumpLabel, ushort address)
         {
             _opcode = opcode;
-            _flagField = flagField;
-            _flagValue = flagValue;
             _jumpLabel = jumpLabel;
             _address = address;
+        }
+
+        internal JumpOnFlagEmitter(byte opcode, FieldBuilder flagField, bool flagValue, Label jumpLabel, ushort address)
+            : this(opcode, jumpLabel, address)
+        {
+            _flagField = flagField;
+            _flagValue = flagValue;
+        }
+
+        internal JumpOnFlagEmitter(byte opcode, MethodBuilder flagMethod, bool flagValue, Label jumpLabel, ushort address)
+            : this(opcode, jumpLabel, address)
+        {
+            _flagMethod = flagMethod;
+            _flagValue = flagValue;
         }
 
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
-            methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, _flagField);
-            methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
-            methodIL.Emit(OpCodes.Beq, _jumpLabel);
+            if (_flagField != null)
+            {
+                methodIL.Emit(OpCodes.Ldarg_0);
+                methodIL.Emit(OpCodes.Ldfld, _flagField);
+                methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+                methodIL.Emit(OpCodes.Beq, _jumpLabel);
+            }
+            else if (_flagMethod != null)
+            {
+                methodIL.Emit(OpCodes.Ldarg_0);
+                methodIL.Emit(OpCodes.Call, _flagMethod);
+                methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+                methodIL.Emit(OpCodes.Beq, _jumpLabel);
+            }
+            else
+            {
+                methodIL.Emit(OpCodes.Br, _jumpLabel);
+            }
         }
 
         public override string ToString() => _opcode switch
         {
             0xC2 => $"JNZ {_address:X4}",
+            0xC3 => $"JMP {_address:X4}",
             0xCA => $"JZ {_address:X4}",
+            0xCB => $"JMP {_address:X4}",
             0xD2 => $"JNC {_address:X4}",
             0xDA => $"JC {_address:X4}",
             0xE2 => $"JPO {_address:X4}",
@@ -1288,59 +1299,66 @@ namespace SpaceInvadersJIT.Generator
     {
         private readonly byte _opcode;
         private readonly ushort _returnAddress;
-        private readonly FieldBuilder _flag;
+        private readonly FieldBuilder _flagField;
         private readonly bool _flagValue;
         private readonly Label _destination;
+        private readonly ushort _address;
 
-        internal CallEmitter(byte opcode, ushort returnAddress, FieldBuilder flag, bool flagValue, Label destination)
+        internal CallEmitter(byte opcode, ushort returnAddress, Label destination, ushort address)
         {
             _opcode = opcode;
             _returnAddress = returnAddress;
-            _flag = flag;
-            _flagValue = flagValue;
             _destination = destination;
+            _address = address;
+        }
+
+        internal CallEmitter(byte opcode, ushort returnAddress, FieldBuilder flag, bool flagValue, Label destination, ushort address)
+            : this(opcode, returnAddress, destination, address)
+        {
+            _flagField = flag;
+            _flagValue = flagValue;
         }
 
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
-            if (_flag == null)
-            {
-                // CALL instruction
-                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, memoryBusField);
-                methodIL.Emit(OpCodes.Br, _destination);
-            }
-            else
+            if (_flagField != null)
             {
                 var skipCallLabel = methodIL.DefineLabel();
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, _flag);
+                methodIL.Emit(OpCodes.Ldfld, _flagField);
                 methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
                 StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, memoryBusField);
                 methodIL.Emit(OpCodes.Br, _destination);
                 methodIL.MarkLabel(skipCallLabel);
             }
+            else
+            {
+                // CALL instruction
+                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, memoryBusField);
+                methodIL.Emit(OpCodes.Br, _destination);
+            }
         }
 
         public override string ToString() => _opcode switch
         {
-            0xC4 => "CNZ",
+            0xC4 => $"CNZ {_address}",
             0xC7 => "RST 0",
-            0xCC => "CZ",
-            var b when b == 0xCD || b == 0xDD || b == 0xED || b == 0xFD => "CALL",
+            0xCC => $"CZ {_address}",
+            var b when b == 0xCD || b == 0xDD || b == 0xED || b == 0xFD => $"CALL {_address}",
             0xCF => "RST 1",
-            0xD4 => "CNC",
+            0xD4 => $"CNC {_address}",
             0xD7 => "RST 2",
-            0xDC => "CC",
+            0xDC => $"CC {_address}",
             0xDF => "RST 3",
-            0xE4 => "CPO",
+            0xE4 => $"CPO {_address}",
             0xE7 => "RST 4",
-            0xEC => "CPE",
+            0xEC => $"CPE {_address}",
             0xEF => "RST 5",
-            0xF4 => "CP",
+            0xF4 => $"CP {_address}",
             0xF7 => "RST 6",
-            0xFC => "CM",
+            0xFC => $"CM {_address}",
             0xFF => "RST 7",
             _ => throw new ArgumentOutOfRangeException()
         };
@@ -1349,35 +1367,58 @@ namespace SpaceInvadersJIT.Generator
     internal class RetEmitter : IEmitter
     {
         private readonly byte _opcode;
-        private readonly FieldBuilder _flag;
+        private readonly FieldBuilder _fieldFlag;
+        private readonly MethodBuilder _methodFlag;
         private readonly bool _flagValue;
 
-        internal RetEmitter(byte opcode, FieldBuilder flag, bool flagValue)
+        internal RetEmitter(byte opcode)
         {
             _opcode = opcode;
-            _flag = flag;
+        }
+
+        internal RetEmitter(byte opcode, FieldBuilder flag, bool flagValue)
+            : this(opcode)
+        {
+            _fieldFlag = flag;
+            _flagValue = flagValue;
+        }
+
+        internal RetEmitter(byte opcode, MethodBuilder flag, bool flagValue)
+            : this(opcode)
+        {
+            _methodFlag = flag;
             _flagValue = flagValue;
         }
 
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
-            var returnAddress = methodIL.DeclareLocal(typeof(byte));
-            if (_flag == null)
-            {
-                StackUtilities.PopPairFromStack(methodIL, returnAddress, internals.StackPointer, memoryBusField);
-                //ProgramCounterUtilities.JumpToDynamicAddress(methodIL, internals.ProgramLabels, returnAddress);
-            }
-            else
+            if (_fieldFlag != null)
             {
                 var skipCallLabel = methodIL.DefineLabel();
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, _flag);
+                methodIL.Emit(OpCodes.Ldfld, _fieldFlag);
                 methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
-                StackUtilities.PopPairFromStack(methodIL, returnAddress, internals.StackPointer, memoryBusField);
-                ProgramCounterUtilities.JumpToDynamicAddress(methodIL, internals.ProgramLabels, returnAddress);
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
                 methodIL.MarkLabel(skipCallLabel);
+            }
+            else if (_methodFlag != null)
+            {
+                var skipCallLabel = methodIL.DefineLabel();
+                methodIL.Emit(OpCodes.Ldarg_0);
+                methodIL.Emit(OpCodes.Call, _methodFlag);
+                methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+                methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
+                methodIL.MarkLabel(skipCallLabel);
+            }
+            else
+            {
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
             }
         }
 
@@ -1531,7 +1572,6 @@ namespace SpaceInvadersJIT.Generator
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
-            var destinationAddress = methodIL.DeclareLocal(typeof(ushort));
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.H);
             methodIL.Emit(OpCodes.Ldc_I4_8);
@@ -1539,8 +1579,8 @@ namespace SpaceInvadersJIT.Generator
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.L);
             methodIL.Emit(OpCodes.Or);
-            methodIL.Emit(OpCodes.Stloc, destinationAddress.LocalIndex);
-            ProgramCounterUtilities.JumpToDynamicAddress(methodIL, internals.ProgramLabels, destinationAddress);
+            methodIL.Emit(OpCodes.Stloc, internals.DestinationAddress.LocalIndex);
+            methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
         }
 
         public override string ToString() => "PCHL";

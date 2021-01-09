@@ -1,9 +1,8 @@
 ﻿using System;
-using SpaceInvadersJIT._8080;
-using SpaceInvadersJIT.Generator;
+using JIT8080.Generator;
 using Xunit;
 
-namespace SpaceInvadersJIT.Tests.Opcodes
+namespace JIT8080.Tests.Opcodes
 {
     public class RotateOperationTests
     {
@@ -14,7 +13,7 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestRLCOpcode(byte original, byte expected, bool carryFlag)
         {
             var rom = new byte[] {0x3E, original, 0x07, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 
             Assert.Equal(expected, emulator.Internals.A.GetValue(emulator.Emulator));
@@ -30,7 +29,7 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestRALOpcode(byte original, byte expected, bool originalCarryFlag, bool carryFlag)
         {
             var rom = new byte[] {0x3E, original, 0x17, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Internals.CarryFlag.SetValue(emulator.Emulator, originalCarryFlag);
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 
@@ -45,7 +44,7 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestRRCOpcode(byte original, byte expected, bool carryFlag)
         {
             var rom = new byte[] {0x3E, original, 0x0F, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 
             Assert.Equal(expected, emulator.Internals.A.GetValue(emulator.Emulator));
@@ -61,7 +60,7 @@ namespace SpaceInvadersJIT.Tests.Opcodes
         public void TestRAROpcode(byte original, byte expected, bool originalCarryFlag, bool carryFlag)
         {
             var rom = new byte[] {0x3E, original, 0x1F, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new MemoryBus8080(rom), new IOHandler());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Internals.CarryFlag.SetValue(emulator.Emulator, originalCarryFlag);
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 
