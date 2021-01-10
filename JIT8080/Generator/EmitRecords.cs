@@ -841,76 +841,6 @@ namespace JIT8080.Generator
         public override string ToString() => $"DAD {_regPair}";
     }
 
-    internal class General8BitALUImmediateEmitter : IEmitter
-    {
-        private readonly Opcodes8080 _opcode;
-        private readonly byte _operand;
-        private readonly OpCode _arithmeticOpCode;
-        private readonly bool _useCarryInOperation;
-        private readonly bool _discardResult;
-
-        internal General8BitALUImmediateEmitter(Opcodes8080 opcode, byte opcodeByte, byte operand)
-        {
-            _opcode = opcode;
-            _operand = operand;
-            (_arithmeticOpCode, _useCarryInOperation, _discardResult) = opcodeByte switch
-            {
-                0xC6 => (OpCodes.Add, false, true),
-                0xCE => (OpCodes.Add, true, true),
-                0xD6 => (OpCodes.Sub, false, true),
-                0xDE => (OpCodes.Sub, true, true),
-                0xE6 => (OpCodes.And, false, true),
-                0xEE => (OpCodes.Xor, false, true),
-                0xF6 => (OpCodes.Or, false, true),
-                0xFE => (OpCodes.Sub, false, false),
-                _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode,
-                    "Invalid opcode for immediate ALU op"),
-            };
-        }
-
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
-        {
-            methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, internals.A);
-            methodIL.Emit(OpCodes.Ldc_I4_S, _operand);
-            methodIL.Emit(_arithmeticOpCode);
-            if (_useCarryInOperation)
-            {
-                methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
-                methodIL.Emit(_arithmeticOpCode);
-            }
-            var result = methodIL.DeclareLocal(typeof(int));
-            var byteResult = methodIL.DeclareLocal(typeof(byte));
-            methodIL.Emit(OpCodes.Stloc, result.LocalIndex); // Cache off the result as a local variable to allow setting flags
-            methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
-            methodIL.Emit(OpCodes.Conv_U1);
-            methodIL.Emit(OpCodes.Stloc, byteResult.LocalIndex);
-
-            if (!_discardResult)
-            {
-                methodIL.Emit(OpCodes.Ldloc, byteResult.LocalIndex);
-                methodIL.Emit(OpCodes.Stfld, internals.A);
-            }
-            else
-            {
-                methodIL.Emit(OpCodes.Pop);
-            }
-
-            // Handle flag based on result
-            FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, byteResult);
-            FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, byteResult);
-            FlagUtilities.SetCarryFlagFrom8BitLocal(methodIL, internals.CarryFlag, result);
-            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, byteResult);
-
-            // TODO - Handle aux carry
-        }
-
-        public override string ToString() => $"{_opcode} {_operand:X2}";
-    }
-
     /// <summary>
     /// This emitter is used for all 8 bit ALU operations apart from those
     /// which act on immediate values.
@@ -920,128 +850,130 @@ namespace JIT8080.Generator
         private readonly Register _register;
         private readonly OpCode _arithmeticOpCode;
         private readonly bool _useCarryInOperation;
+        private readonly byte _opcodeByte;
         private readonly Opcodes8080 _opcode;
+        private readonly byte _operand;
 
         internal General8BitALUEmitter(byte opcodeByte, Opcodes8080 opcode)
         {
+            _opcodeByte = opcodeByte;
             _opcode = opcode;
-            (_register, _arithmeticOpCode, _useCarryInOperation) = opcodeByte switch
+
+            _register = DetermineRegister(opcodeByte);
+            _arithmeticOpCode = ArithmeticOpcode(_opcode);
+            _useCarryInOperation = UseCarryInOperation(_opcode);
+        }
+        
+        internal General8BitALUEmitter(byte opcodeByte, Opcodes8080 opcode, byte operand)
+            : this(opcodeByte, opcode)
+        {
+            _operand = operand;
+        }
+
+        private static Register DetermineRegister(byte opcodeByte)
+        {
+            return ((opcodeByte & 0b0011_1000) >> 3) switch
             {
-                0x80 => (Register.B, OpCodes.Add, false),
-                0x81 => (Register.C, OpCodes.Add, false),
-                0x82 => (Register.D, OpCodes.Add, false),
-                0x83 => (Register.E, OpCodes.Add, false),
-                0x84 => (Register.H, OpCodes.Add, false),
-                0x85 => (Register.L, OpCodes.Add, false),
-                0x86 => (Register.M, OpCodes.Add, false),
-                0x87 => (Register.A, OpCodes.Add, false),
-                0x88 => (Register.B, OpCodes.Add, true),
-                0x89 => (Register.C, OpCodes.Add, true),
-                0x8A => (Register.D, OpCodes.Add, true),
-                0x8B => (Register.E, OpCodes.Add, true),
-                0x8C => (Register.H, OpCodes.Add, true),
-                0x8D => (Register.L, OpCodes.Add, true),
-                0x8E => (Register.M, OpCodes.Add, true),
-                0x8F => (Register.A, OpCodes.Add, true),
-                0x90 => (Register.B, OpCodes.Sub, false),
-                0x91 => (Register.C, OpCodes.Sub, false),
-                0x92 => (Register.D, OpCodes.Sub, false),
-                0x93 => (Register.E, OpCodes.Sub, false),
-                0x94 => (Register.H, OpCodes.Sub, false),
-                0x95 => (Register.L, OpCodes.Sub, false),
-                0x96 => (Register.M, OpCodes.Sub, false),
-                0x97 => (Register.A, OpCodes.Sub, false),
-                0x98 => (Register.B, OpCodes.Sub, true),
-                0x99 => (Register.C, OpCodes.Sub, true),
-                0x9A => (Register.D, OpCodes.Sub, true),
-                0x9B => (Register.E, OpCodes.Sub, true),
-                0x9C => (Register.H, OpCodes.Sub, true),
-                0x9D => (Register.L, OpCodes.Sub, true),
-                0x9E => (Register.M, OpCodes.Sub, true),
-                0x9F => (Register.A, OpCodes.Sub, true),
-                0xA0 => (Register.B, OpCodes.And, false),
-                0xA1 => (Register.C, OpCodes.And, false),
-                0xA2 => (Register.D, OpCodes.And, false),
-                0xA3 => (Register.E, OpCodes.And, false),
-                0xA4 => (Register.H, OpCodes.And, false),
-                0xA5 => (Register.L, OpCodes.And, false),
-                0xA6 => (Register.M, OpCodes.And, false),
-                0xA7 => (Register.A, OpCodes.And, false),
-                0xA8 => (Register.B, OpCodes.Xor, false),
-                0xA9 => (Register.C, OpCodes.Xor, false),
-                0xAA => (Register.D, OpCodes.Xor, false),
-                0xAB => (Register.E, OpCodes.Xor, false),
-                0xAC => (Register.H, OpCodes.Xor, false),
-                0xAD => (Register.L, OpCodes.Xor, false),
-                0xAE => (Register.M, OpCodes.Xor, false),
-                0xAF => (Register.A, OpCodes.Xor, false),
-                0xB0 => (Register.B, OpCodes.Or, false),
-                0xB1 => (Register.C, OpCodes.Or, false),
-                0xB2 => (Register.D, OpCodes.Or, false),
-                0xB3 => (Register.E, OpCodes.Or, false),
-                0xB4 => (Register.H, OpCodes.Or, false),
-                0xB5 => (Register.L, OpCodes.Or, false),
-                0xB6 => (Register.M, OpCodes.Or, false),
-                0xB7 => (Register.A, OpCodes.Or, false),
-                0xB8 => (Register.B, OpCodes.Sub, false),
-                0xB9 => (Register.C, OpCodes.Sub, false),
-                0xBA => (Register.D, OpCodes.Sub, false),
-                0xBB => (Register.E, OpCodes.Sub, false),
-                0xBC => (Register.H, OpCodes.Sub, false),
-                0xBD => (Register.L, OpCodes.Sub, false),
-                0xBE => (Register.M, OpCodes.Sub, false),
-                0xBF => (Register.A, OpCodes.Sub, false),
-                _ => throw new ArgumentOutOfRangeException(nameof(opcodeByte), opcodeByte, "Invalid opcode for 8 bit ALU")
+                0b000 => Register.B,
+                0b001 => Register.C,
+                0b010 => Register.D,
+                0b011 => Register.E,
+                0b100 => Register.H,
+                0b101 => Register.L,
+                0b110 => Register.M,
+                0b111 => Register.A,
+                _ => throw new ArgumentOutOfRangeException(nameof(opcodeByte), opcodeByte, "Invalid program")
             };
         }
 
+        private static OpCode ArithmeticOpcode(Opcodes8080 opcode) => opcode switch
+        {
+            Opcodes8080.ADD => OpCodes.Add,
+            Opcodes8080.ADC => OpCodes.Add,
+            Opcodes8080.ADI => OpCodes.Add,
+            Opcodes8080.ACI => OpCodes.Add,
+            Opcodes8080.SUB => OpCodes.Sub,
+            Opcodes8080.SBB => OpCodes.Sub,
+            Opcodes8080.SBI => OpCodes.Sub,
+            Opcodes8080.SUI => OpCodes.Sub,
+            Opcodes8080.ANA => OpCodes.And,
+            Opcodes8080.ANI => OpCodes.And,
+            Opcodes8080.XRA => OpCodes.Xor,
+            Opcodes8080.XRI => OpCodes.Xor,
+            Opcodes8080.ORA => OpCodes.Or,
+            Opcodes8080.ORI => OpCodes.Or,
+            Opcodes8080.CMP => OpCodes.Sub,
+            Opcodes8080.CPI => OpCodes.Sub,
+            _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, "Invalid opcode for 8 bit arithmetic"),
+        };
+
+        private static bool UseCarryInOperation(Opcodes8080 opcode) => opcode switch
+        {
+            Opcodes8080.ADC => true,
+            Opcodes8080.SBB => true,
+            Opcodes8080.ACI => true,
+            Opcodes8080.SBI => true,
+            _ => false,
+        };
+
+        private static bool WriteResult(Opcodes8080 opcode) => opcode != Opcodes8080.CMP && opcode != Opcodes8080.CPI; 
+
         private void LoadSource(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField)
         {
-            switch (_register)
+            if (_opcodeByte > 0xC0) // Immediate 8 bit arithmetic
             {
-                case Register.A:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.A);
-                    break;
-                case Register.B:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.B);
-                    break;
-                case Register.C:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.C);
-                    break;
-                case Register.D:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.D);
-                    break;
-                case Register.E:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.E);
-                    break;
-                case Register.H:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.H);
-                    break;
-                case Register.L:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, internals.L);
-                    break;
-                case Register.M:
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-                    methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Call, internals.HL);
-                    methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                methodIL.Emit(OpCodes.Ldc_I4_S, _operand);
+            }
+            else
+            {
+                switch (_register)
+                {
+                    case Register.A:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.A);
+                        break;
+                    case Register.B:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.B);
+                        break;
+                    case Register.C:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.C);
+                        break;
+                    case Register.D:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.D);
+                        break;
+                    case Register.E:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.E);
+                        break;
+                    case Register.H:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.H);
+                        break;
+                    case Register.L:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, internals.L);
+                        break;
+                    case Register.M:
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                        methodIL.Emit(OpCodes.Ldarg_0);
+                        methodIL.Emit(OpCodes.Call, internals.HL);
+                        methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }                
             }
         }
 
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
+            var byteResult = methodIL.DeclareLocal(typeof(byte));
+
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
@@ -1053,14 +985,57 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
                 methodIL.Emit(_arithmeticOpCode);
             }
-            var result = methodIL.DeclareLocal(typeof(int));
-            var byteResult = methodIL.DeclareLocal(typeof(byte));
-            methodIL.Emit(OpCodes.Stloc, result.LocalIndex); // Cache off the result as a local variable to allow setting flags
-            methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
-            methodIL.Emit(OpCodes.Conv_U1);
-            methodIL.Emit(OpCodes.Stloc, byteResult.LocalIndex);
+            
+            // Set the carry flag (different for different operations)
+            methodIL.Emit(OpCodes.Ldarg_0);
+            switch (_opcode)
+            {
+                case Opcodes8080.ADD:
+                case Opcodes8080.ADC:
+                case Opcodes8080.ACI:
+                case Opcodes8080.ADI:
+                    methodIL.Emit(OpCodes.Dup);
+                    methodIL.Emit(OpCodes.Ldc_I4_S, 0b1111_1111);
+                    methodIL.Emit(OpCodes.Clt);
+                    methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
+                    break;
+                case Opcodes8080.SUB:
+                case Opcodes8080.CMP:
+                case Opcodes8080.CPI:
+                case Opcodes8080.SUI:
+                    LoadSource(methodIL, internals, memoryBusField);
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldfld, internals.A);
+                    methodIL.Emit(OpCodes.Cgt);
+                    methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
+                    break;
+                case Opcodes8080.SBB:
+                case Opcodes8080.SBI:
+                    LoadSource(methodIL, internals, memoryBusField);
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
+                    methodIL.Emit(OpCodes.Add);
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldfld, internals.A);
+                    methodIL.Emit(OpCodes.Cgt);
+                    methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
+                    break;
+                case Opcodes8080.ANA:
+                case Opcodes8080.ANI:
+                case Opcodes8080.XRA:
+                case Opcodes8080.XRI:
+                case Opcodes8080.ORA:
+                case Opcodes8080.ORI:
+                    methodIL.Emit(OpCodes.Ldc_I4_0);
+                    methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
+                    break;
+                default:
+                    throw new ArgumentException(nameof(_opcode));
+            }
+            
+            methodIL.Emit(OpCodes.Stloc, byteResult.LocalIndex);  // Cache off the result as a local variable to allow setting flags
 
-            if (_opcode != Opcodes8080.CMP)
+            if (WriteResult(_opcode))
             {
                 methodIL.Emit(OpCodes.Ldloc, byteResult.LocalIndex);
                 methodIL.Emit(OpCodes.Stfld, internals.A);
@@ -1073,7 +1048,6 @@ namespace JIT8080.Generator
             // Handle flags based on value of accumulator/local
             FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, byteResult);
             FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, byteResult);
-            FlagUtilities.SetCarryFlagFrom8BitLocal(methodIL, internals.CarryFlag, result);
             FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, byteResult);
 
             // TODO - Handle Carry/AuxCarry & Parity flags

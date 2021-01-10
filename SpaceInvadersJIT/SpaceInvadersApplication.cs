@@ -5,8 +5,8 @@ namespace SpaceInvadersJIT
 {
     internal class SpaceInvadersApplication : IIOHandler, IRenderer, IDisposable, IMemoryBus8080
     {
-        private readonly IntPtr _window;
-        private readonly IntPtr _renderer;
+        private IntPtr _window;
+        private IntPtr _renderer;
         private ShiftRegister _shiftRegister;
         private readonly byte[] _rom = new byte[0x2000];
         private readonly byte[] _ram = new byte[0x2000];
@@ -14,7 +14,10 @@ namespace SpaceInvadersJIT
         internal SpaceInvadersApplication(byte[] program)
         {
             Array.Copy(program, _rom, Math.Min(0x2000, program.Length));
+        }
 
+        internal void InitialiseWindow()
+        {
             _ = SDL2.SDL_Init(SDL2.SDL_INIT_VIDEO | SDL2.SDL_INIT_AUDIO);
             _ = SDL2.SDL_CreateWindowAndRenderer(
                 224,

@@ -16,6 +16,7 @@ namespace SpaceInvadersJIT
                 _ => new byte[] { 0x04, 0x00, 0x00, 0x76 }//File.ReadAllBytes(Path.Combine("..", "..", "..", "..", "roms", "test", "intro.bin")).AsSpan(0, 0x2000).ToArray(),
             };
             var application = new SpaceInvadersApplication(rom);
+            application.InitialiseWindow();
             var emulator = Emulator.CreateEmulator(rom, application, application, application);
 
             Console.WriteLine("Emulator Created");

@@ -43,12 +43,19 @@ namespace JIT8080.Tests.Opcodes
         }
 
         [Theory]
-        [InlineData(0x42, 0x3D, false, 0x7F, false, false, false, false, false)]
-        [InlineData(0x42, 0x3D, true, 0x80, true, false, false, false, true)]
-        public void TestADCOpcode(byte a, byte operand, bool carryFlag, byte result, bool expectedSignFlag,
+        [InlineData(0x88, 0x42, 0x3D, false, 0x7F, false, false, false, false, false)] // ADC
+        [InlineData(0x88, 0x42, 0x3D, true, 0x80, true, false, false, false, true)] // ADC (uses existing carry)
+        [InlineData(0x80, 0x42, 0x3D, false, 0x7F, false, false, false, false, false)] // ADD
+        [InlineData(0x80, 0x42, 0x3D, true, 0x7F, false, false, false, false, true)] // ADD (ignores existing carry)
+        [InlineData(0x90, 0x42, 0x3D, false, 0x05, false, false, false, true, false)] // SUB
+        [InlineData(0x90, 0x42, 0x3D, true, 0x05, false, false, false, true, true)] // SUB (ignores existing carry)
+        [InlineData(0x90, 0x00, 0x01, true, 0xFF, true, false, true, true, true)] // SUB crossing byte boundary (0->FF)
+        [InlineData(0xA0, 0xFF, 0x00, false, 0x00, false, true, false, true, false)] // ANA
+        [InlineData(0xA0, 0xFF, 0xFF, false, 0xFF, true, false, false, true, false)] // ANA
+        public void Test8BitArithmeticOpcode(byte opcode, byte a, byte operand, bool carryFlag, byte result, bool expectedSignFlag,
             bool expectedZeroFlag, bool expectedCarryFlag, bool expectedParityFlag, bool expectedAuxCarryFlag)
         {
-            var rom = new byte[] {0x88, 0x76};
+            var rom = new byte[] {opcode, 0x76};
             var emulator =
                 Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
             emulator.Internals.A.SetValue(emulator.Emulator, a);
@@ -68,6 +75,8 @@ namespace JIT8080.Tests.Opcodes
         [InlineData(0xE6, 0x00, 0x00, 0x00, false, false, false, true, true, false)] // ANI
         [InlineData(0xE6, 0xFF, 0x00, 0x00, false, false, false, true, true, false)] // ANI
         [InlineData(0xE6, 0x3A, 0x0F, 0x0A, false, false, false, false, true, false)] // ANI
+        [InlineData(0xD6, 0x0, 0x0, 0x0, false, false, false, true, true, false)] // SUI
+        [InlineData(0xD6, 0x1, 0x0, 0x1, false, false, false, false, false, false)] // SUI
         public void Test8BitImmediateOpcodes(byte opcode, byte a, byte operand, byte expected, bool prevCarry,
             bool carry, bool sign, bool zero, bool parity, bool auxCarry)
         {

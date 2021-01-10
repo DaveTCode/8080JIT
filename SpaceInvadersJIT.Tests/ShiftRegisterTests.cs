@@ -16,12 +16,12 @@ namespace SpaceInvadersJIT.Tests
         [InlineData(0b1111_1111, 0, 6, 0b1111_11)]
         [InlineData(0b1111_1111, 0, 7, 0b1111_111)]
         [InlineData(0b1111_1111, 0, 8, 0)]
-        public void TestShiftRegister(byte firstValue, byte secondValue, byte offset, byte expectedResult)
+        public void TestShiftRegister(byte lowByte, byte highByte, byte offset, byte expectedResult)
         {
             var app = new SpaceInvadersApplication(System.Array.Empty<byte>());
             app.Out(2, offset);
-            app.Out(3, firstValue);
-            app.Out(3, secondValue);
+            app.Out(4, lowByte);
+            app.Out(4, highByte);
             Assert.Equal(expectedResult, app.In(3));
         }
     }

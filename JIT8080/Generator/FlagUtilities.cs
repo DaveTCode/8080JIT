@@ -28,15 +28,6 @@ namespace JIT8080.Generator
             methodIL.Emit(OpCodes.Stfld, signFlagField);
         }
 
-        internal static void SetCarryFlagFrom8BitLocal(ILGenerator methodIL, FieldBuilder carryFlagBuilder, LocalBuilder result)
-        {
-            methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
-            methodIL.Emit(OpCodes.Ldc_I4, 0b1111_1111);
-            methodIL.Emit(OpCodes.Cgt);
-            methodIL.Emit(OpCodes.Stfld, carryFlagBuilder);
-        }
-
         /// <summary>
         /// This function performs the calculation as
         /// parity = result
