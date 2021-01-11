@@ -420,6 +420,7 @@ namespace JIT8080.Generator
 
 #if DEBUG
                     methodIL.EmitWriteLine($"{programCounter:X4} - {instructions}");
+                    methodIL.EmitDebugString(cpuInternal);
 #endif
                     instructions.Emit(methodIL, cpuInternal, memoryBusField, ioHandlerField);
 
