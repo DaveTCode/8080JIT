@@ -1,0 +1,48 @@
+pool:
+  name: Hosted Windows 2019 with VS2019
+variables:
+  BuildPlatform: 'any cpu'
+  BuildConfiguration: 'debug'
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Install .NET 5 sdk'
+    inputs:
+      packageType: sdk
+      version: 5.x
+      installationPath: $(Agent.ToolsDirectory)/dotnet
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore Packages'
+    inputs:
+      command: 'restore'
+      projects: '**/*.csproj'
+      feedsToUse: 'select'
+      verbosityRestore: Minimal
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Build test projects'
+    inputs:
+      command: 'build'
+      projects: '*Tests/*.csproj'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Run all integration tests'
+    inputs:
+      command: 'test'
+      projects: '*Tests/*.csproj'
+      arguments: /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)\TestResults\Coverage\
+
+  - task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@4
+    displayName: ReportGenerator
+    inputs:
+      reports: '$(Build.SourcesDirectory)/TestResults/Coverage/coverage.cobertura.xml'
+      targetdir: '$(Build.SourcesDirectory)/TestResults/Coverage'
+      sourcedirs: '$(Build.SourcesDirectory)'
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish code coverage results'
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: '$(Build.SourcesDirectory)/TestResults/Coverage/*cobertura.xml'
+      reportDirectory: '$(Build.SourcesDirectory)/TestResults/Coverage'
