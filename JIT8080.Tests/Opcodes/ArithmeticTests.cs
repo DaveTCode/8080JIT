@@ -77,6 +77,10 @@ namespace JIT8080.Tests.Opcodes
         [InlineData(0xE6, 0x3A, 0x0F, 0x0A, false, false, false, false, true, false)] // ANI
         [InlineData(0xD6, 0x0, 0x0, 0x0, false, false, false, true, true, false)] // SUI
         [InlineData(0xD6, 0x1, 0x0, 0x1, false, false, false, false, false, false)] // SUI
+        [InlineData(0xD6, 0x0, 0x1, 0xFF, false, true, true, false, true, false)] // SUI (across boundary)
+        [InlineData(0xFE, 0x0, 0x0, 0x0, false, false, false, true, true, false)] // CPI
+        [InlineData(0xFE, 0x1, 0x0, 0x1, false, false, false, false, false, false)] // CPI
+        [InlineData(0xFE, 0x0, 0x1, 0x0, false, true, true, false, true, false)] // CPI (across boundary)
         public void Test8BitImmediateOpcodes(byte opcode, byte a, byte operand, byte expected, bool prevCarry,
             bool carry, bool sign, bool zero, bool parity, bool auxCarry)
         {
