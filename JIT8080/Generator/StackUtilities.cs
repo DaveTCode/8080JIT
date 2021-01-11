@@ -44,7 +44,7 @@ namespace JIT8080.Generator
         internal static void PopPairFromStack(ILGenerator methodIL, FieldBuilder msb, FieldBuilder lsb,
             FieldBuilder stackPointer, FieldBuilder memoryBusField)
         {
-            foreach (var b in new[] {msb, lsb})
+            foreach (var b in new[] {lsb, msb})
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
                 ReadByte(methodIL, stackPointer, memoryBusField);
