@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		README.md = README.md
 		SpaceInvadersJIT.sln.DotSettings = SpaceInvadersJIT.sln.DotSettings
+		azure-pipelines.yml = azure-pipelines.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JIT8080", "JIT8080\JIT8080.csproj", "{E6BAB05F-FEC1-4C43-A3F1-E23EB93513CA}"
