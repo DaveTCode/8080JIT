@@ -290,9 +290,9 @@ namespace JIT8080.Generator
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-            methodIL.Emit(OpCodes.Ldc_I4, _operand);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
+            methodIL.Emit(OpCodes.Ldc_I4, _operand);
             methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
         }
 
