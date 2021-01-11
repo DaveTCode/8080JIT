@@ -86,7 +86,7 @@ namespace JIT8080.Generator
         {
             if (_opcodeByte > 0xC0) // Immediate 8 bit arithmetic
             {
-                methodIL.Emit(OpCodes.Ldc_I4_S, _operand);
+                methodIL.EmitLd8Immediate( _operand);
             }
             else
             {
@@ -136,7 +136,7 @@ namespace JIT8080.Generator
         void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
             FieldBuilder ioHandlerField)
         {
-            var byteResult = methodIL.DeclareLocal(typeof(byte));
+            var result = methodIL.DeclareLocal(typeof(int));
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -149,6 +149,7 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
                 methodIL.Emit(_arithmeticOpCode);
             }
+            methodIL.Emit(OpCodes.Stloc, result.LocalIndex);  // Cache off the result as a local variable to allow setting flags
             
             // Set the carry flag (different for different operations)
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -158,9 +159,10 @@ namespace JIT8080.Generator
                 case Opcodes8080.ADC:
                 case Opcodes8080.ACI:
                 case Opcodes8080.ADI:
-                    methodIL.Emit(OpCodes.Dup);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, 0b1111_1111);
-                    methodIL.Emit(OpCodes.Clt);
+                    methodIL.EmitWriteLine(result);
+                    methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
+                    methodIL.Emit(OpCodes.Ldc_I4, 255);
+                    methodIL.Emit(OpCodes.Cgt);
                     methodIL.Emit(OpCodes.Stfld, internals.CarryFlag);
                     break;
                 case Opcodes8080.SUB:
@@ -196,12 +198,10 @@ namespace JIT8080.Generator
                 default:
                     throw new ArgumentException(nameof(_opcode));
             }
-            
-            methodIL.Emit(OpCodes.Stloc, byteResult.LocalIndex);  // Cache off the result as a local variable to allow setting flags
 
             if (WriteResult(_opcode))
             {
-                methodIL.Emit(OpCodes.Ldloc, byteResult.LocalIndex);
+                methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
                 methodIL.Emit(OpCodes.Stfld, internals.A);
             }
             else
@@ -210,9 +210,9 @@ namespace JIT8080.Generator
             }
 
             // Handle flags based on value of accumulator/local
-            FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, byteResult);
-            FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, byteResult);
-            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, byteResult);
+            FlagUtilities.SetZeroFlagFromLocal(methodIL, internals.ZeroFlag, result);
+            FlagUtilities.SetSignFlagFromLocal(methodIL, internals.SignFlag, result);
+            FlagUtilities.SetParityFlagFromLocal(methodIL, internals.ParityFlag, result);
 
             // TODO - Handle AuxCarry flag
         }

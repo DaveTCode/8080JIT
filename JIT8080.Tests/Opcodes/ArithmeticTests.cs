@@ -72,6 +72,10 @@ namespace JIT8080.Tests.Opcodes
         }
 
         [Theory]
+        [InlineData(0xC6, 0x00, 0x00, 0x00, false, false, false, true, true, false)] // ADI
+        [InlineData(0xC6, 0xFF, 0x00, 0xFF, false, false, true, false, true, false)] // ADI
+        [InlineData(0xC6, 0x14, 0x42, 0x56, false, false, false, false, true, false)] // ADI
+        [InlineData(0xC6, 0x56, 0xBE, 0x14, false, true, false, false, true, true)] // ADI (check carry)
         [InlineData(0xE6, 0x00, 0x00, 0x00, false, false, false, true, true, false)] // ANI
         [InlineData(0xE6, 0xFF, 0x00, 0x00, false, false, false, true, true, false)] // ANI
         [InlineData(0xE6, 0x3A, 0x0F, 0x0A, false, false, false, false, true, false)] // ANI

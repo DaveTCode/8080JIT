@@ -147,7 +147,7 @@ namespace JIT8080.Generator
             
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-            methodIL.Emit(OpCodes.Ldc_I4_S, msb);
+            methodIL.EmitLd8Immediate( msb);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, stackPointer);
             methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
@@ -156,7 +156,7 @@ namespace JIT8080.Generator
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-            methodIL.Emit(OpCodes.Ldc_I4_S, lsb);
+            methodIL.EmitLd8Immediate( lsb);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, stackPointer);
             methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);

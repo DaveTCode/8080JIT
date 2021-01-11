@@ -119,7 +119,7 @@ namespace JIT8080.Generator
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_1);
-            methodIL.Emit(OpCodes.Ldc_I4_S, 0b0001_0000);
+            methodIL.EmitLd8Immediate( 0b0001_0000);
             methodIL.Emit(OpCodes.And);
             methodIL.Emit(OpCodes.Ldc_I4_4);
             methodIL.Emit(OpCodes.Shr_Un);
@@ -127,7 +127,7 @@ namespace JIT8080.Generator
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_1);
-            methodIL.Emit(OpCodes.Ldc_I4_S, 0b0100_0000);
+            methodIL.EmitLd8Immediate( 0b0100_0000);
             methodIL.Emit(OpCodes.And);
             methodIL.Emit(OpCodes.Ldc_I4_6);
             methodIL.Emit(OpCodes.Shr_Un);
@@ -135,7 +135,7 @@ namespace JIT8080.Generator
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_1);
-            methodIL.Emit(OpCodes.Ldc_I4_S, 0b1000_0000);
+            methodIL.Emit(OpCodes.Ldc_I4, 0b1000_0000);
             methodIL.Emit(OpCodes.And);
             methodIL.Emit(OpCodes.Ldc_I4_7);
             methodIL.Emit(OpCodes.Shr_Un);

@@ -41,26 +41,26 @@ namespace JIT8080.Generator
             {
                 case 0x01: // LXI BC
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.C);
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand2);
+                    methodIL.EmitLd8Immediate( _operand2);
                     methodIL.Emit(OpCodes.Stfld, internals.B);
                     break;
                 case 0x11: // LXI DE
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.E);
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand2);
+                    methodIL.EmitLd8Immediate( _operand2);
                     methodIL.Emit(OpCodes.Stfld, internals.D);
                     break;
                 case 0x21: // LXI HL
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.L);
                     methodIL.Emit(OpCodes.Ldarg_0);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand2);
+                    methodIL.EmitLd8Immediate( _operand2);
                     methodIL.Emit(OpCodes.Stfld, internals.H);
                     break;
                 case 0x31: // LXI SP
@@ -104,38 +104,38 @@ namespace JIT8080.Generator
             switch (_opcode)
             {
                 case 0x06: // MVI B
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.B);
                     break;
                 case 0x0E: // MVI C
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.C);
                     break;
                 case 0x16: // MVI D
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.D);
                     break;
                 case 0x1E: // MVI E
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.E);
                     break;
                 case 0x26: // MVI H
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.H);
                     break;
                 case 0x2E: // MVI L
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.L);
                     break;
                 case 0x36: // MVI M
                     methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Ldarg_0);
                     methodIL.Emit(OpCodes.Call, internals.HL);
                     methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
                     break;
                 case 0x3E: // MVI A
-                    methodIL.Emit(OpCodes.Ldc_I4_S, _operand1);
+                    methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Stfld, internals.A);
                     break;
                 default:
@@ -521,7 +521,7 @@ namespace JIT8080.Generator
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, ioHandlerField);
-            methodIL.Emit(OpCodes.Ldc_I4_S, _port);
+            methodIL.EmitLd8Immediate( _port);
             methodIL.Emit(OpCodes.Callvirt, ioHandlerField.FieldType.GetMethod("In")!);
             methodIL.Emit(OpCodes.Stfld, internals.A);
         }
@@ -543,7 +543,7 @@ namespace JIT8080.Generator
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, ioHandlerField);
-            methodIL.Emit(OpCodes.Ldc_I4_S, _port);
+            methodIL.EmitLd8Immediate( _port);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
             methodIL.Emit(OpCodes.Callvirt, ioHandlerField.FieldType.GetMethod("Out")!);
@@ -736,7 +736,6 @@ namespace JIT8080.Generator
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
             methodIL.Emit(OpCodes.Or);
-            methodIL.Emit(OpCodes.Conv_U1);
             methodIL.Emit(OpCodes.Stfld, internals.A);
 
             // Set the carry flag based on bit 7
