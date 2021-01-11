@@ -1,5 +1,8 @@
 {
   "profiles": {
+    "General": {
+      "commandName": "Project"
+    },
     "8080PRE.COM": {
       "commandName": "Project",
       "commandLineArgs": "..\\..\\..\\..\\roms\\test\\8080PRE.COM"
