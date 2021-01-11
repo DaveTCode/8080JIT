@@ -1,16 +1,18 @@
 ﻿using System;
+using System.Text;
 using JIT8080._8080;
+using JIT8080.Generator;
 
 namespace CPMEmulator
 {
     internal class CPMApplication : IMemoryBus8080, IIOHandler, IRenderer
     {
         private static readonly byte[] Bios = {
-            0x76, 0x00, 0x01, 0x0, 0x0, // BOOT treated as HLT to exit if this is called
-            0xDB, 0x03, 0xC9, // CONST treated as IN(3)
-            0xDB, 0x02, 0xC9, // CONIN treated as IN(2)
-            0xF5, 0x79, 0xD3, 0x02, 0xF1, 0xC9 // CONOUT treated as PUSH AF, MOV A,C, OUT (2), POP AF (which is more than the 3 bytes really allowed but I don't want to emulate LIST at 0x09 so whatever
+            0x76, 0x76, 0x76, 0x76, 0x76, // 00-04 all just HLT machine
+            0xD3, 0x00, 0x00, 0xC9, // Treat BDOS entrypoint as OUT (0), RET
         };
+
+        internal Cpu8080 Emulator { get; set; }
 
         private readonly byte[] _memory = new byte[0x10000];
         private readonly int _romLength;
@@ -33,26 +35,56 @@ namespace CPMEmulator
 
         internal Span<byte> CompleteProgram() => _memory.AsSpan(0, Bios.Length + _romLength);
 
-        public byte ReadByte(ushort address) => _memory[address];
-
-        public void WriteByte(byte value, ushort address) => _memory[address] = value;
-
-        public void Out(byte port, byte value)
+        public byte ReadByte(ushort address)
         {
-            switch (port)
+#if  DEBUG
+            Console.WriteLine($"    READ {address:X4}={_memory[address]:X2}");
+#endif
+            return _memory[address];
+        }
+
+        public void WriteByte(byte value, ushort address)
+        {
+#if DEBUG
+            Console.WriteLine($"    WRITE {address:X4}={value:X2}");
+#endif
+            _memory[address] = value;
+        }
+
+        public void Out(byte port, byte _)
+        {
+            if (port != 0) return;
+
+            var operation = (byte)Emulator.Internals.C.GetValue(Emulator.Emulator)!;
+            // Value here is the BDOS function to call (that is, register C at point of call)
+            switch (operation)
             {
-                case 2: // CONOUT
-                    Console.Write((char)value);
+                case 0: // System Reset
+                    Environment.Exit(0);
+                    break;
+                case 1: // C_READ
+                    var key = Console.ReadKey(false);
+                    Emulator.Internals.A.SetValue(Emulator.Emulator, (byte)key.KeyChar);
+                    break;
+                case 2: // C_WRITE
+                    Console.Write(Convert.ToChar(Emulator.Internals.E.GetValue(Emulator.Emulator)!));
+                    break;
+                case 9: // C_WRITESTR
+                    var startIndex = (ushort)Emulator.Internals.DE.Invoke(Emulator.Emulator, Array.Empty<object>())!;
+                    var length = 1;
+                    while (startIndex + length < _memory.Length)
+                    {
+                        if (_memory[startIndex + length] == (byte) '$') break;
+                        length++;
+                    }
+
+                    var stringInMemory = Encoding.ASCII.GetString(_memory.AsSpan(startIndex, length).ToArray());
+                    Console.Write(stringInMemory);
                     break;
             }
         }
 
-        public byte In(byte port) => port switch
-        {
-            2 => (byte) Console.ReadKey(false).KeyChar, // Treat IN (2) as IO CONIN
-            3 => 0xFF, // Treat IN (3) as CONST
-            _ => throw new NotImplementedException($"Unexpected IN call to port {port}"),
-        };
+        public byte In(byte port) => 0x0;
 
         public void VBlank()
         {
