@@ -27,7 +27,7 @@ namespace CPMEmulator
             Array.Copy(Bios, _memory, Bios.Length);
             for (var ii = Bios.Length; ii < 0x100; ii++)
             {
-                _memory[ii] = 0xC9; // Fill the rest of the bios with RET so that we immediately return from any calls
+                _memory[ii] = 0x76; // Fill the rest of the bios with HLT so we find out about instructions that shouldn't be called
             }
             Array.Copy(rom, 0, _memory, 0x100, rom.Length);
             _romLength = rom.Length;
