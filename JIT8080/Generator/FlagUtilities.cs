@@ -12,6 +12,7 @@ namespace JIT8080.Generator
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldloc, local);
+            methodIL.Emit(OpCodes.Conv_U1);
             methodIL.Emit(OpCodes.Ldc_I4_0);
             methodIL.Emit(OpCodes.Ceq);
             methodIL.Emit(OpCodes.Stfld, zeroFlagField);
