@@ -159,7 +159,6 @@ namespace JIT8080.Generator
                 case Opcodes8080.ADC:
                 case Opcodes8080.ACI:
                 case Opcodes8080.ADI:
-                    methodIL.EmitWriteLine(result);
                     methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
                     methodIL.Emit(OpCodes.Ldc_I4, 255);
                     methodIL.Emit(OpCodes.Cgt);
