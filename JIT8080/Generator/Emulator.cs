@@ -241,7 +241,7 @@ namespace JIT8080.Generator
                 Opcodes8080.CNC => new CallEmitter(opcodeByte, (ushort) (programCounter + opcode.Length()),
                     internals.CarryFlag, false, jumpLabels[operandWord % program.Length], (ushort) (operandWord % program.Length)),
                 Opcodes8080.SUI => new General8BitALUEmitter(opcodeByte, opcode, operand1),
-                Opcodes8080.RC => new RetEmitter(opcodeByte, internals.ZeroFlag, true),
+                Opcodes8080.RC => new RetEmitter(opcodeByte, internals.CarryFlag, true),
                 Opcodes8080.JC => new JumpOnFlagEmitter(opcodeByte, internals.CarryFlag, true,
                     jumpLabels[operandWord % program.Length],
                     operandWord),
