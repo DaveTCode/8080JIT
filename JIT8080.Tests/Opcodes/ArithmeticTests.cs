@@ -103,5 +103,29 @@ namespace JIT8080.Tests.Opcodes
             Assert.Equal(parity, emulator.Internals.ParityFlag.GetValue(emulator.Emulator));
             //Assert.Equal(auxCarry, emulator.Internals.AuxCarryFlag.GetValue(emulator.Emulator));
         }
+
+        [Fact]
+        public void TestChainArithmeticOperations()
+        {
+            var rom = new byte[]
+            {
+                0xC6, 0x5,
+                0xC6, 0x5,
+                0xC6, 0x5,
+                0xC6, 0x5,
+                0xC6, 0x5,
+                0x76
+            };
+            var emulator =
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            
+            emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
+            
+            Assert.Equal((byte)25, emulator.Internals.A.GetValue(emulator.Emulator));
+            Assert.Equal(false, emulator.Internals.SignFlag.GetValue(emulator.Emulator));
+            Assert.Equal(false, emulator.Internals.ZeroFlag.GetValue(emulator.Emulator));
+            Assert.Equal(false, emulator.Internals.CarryFlag.GetValue(emulator.Emulator));
+            Assert.Equal(false, emulator.Internals.ParityFlag.GetValue(emulator.Emulator));
+        }
     }
 }
