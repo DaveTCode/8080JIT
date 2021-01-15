@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests
@@ -23,7 +24,7 @@ namespace JIT8080.Tests
             program[3] = opcode;
             program[4] = 0x6;
             program[0x49] = 0x76; // HLT
-            var emulator = Emulator.CreateEmulator(program, new TestMemoryBus(program), new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(program, new TestMemoryBus(program), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
         }
 

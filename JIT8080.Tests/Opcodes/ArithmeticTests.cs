@@ -1,5 +1,6 @@
 ﻿using System;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests.Opcodes
@@ -14,7 +15,7 @@ namespace JIT8080.Tests.Opcodes
         {
             var rom = new byte[] {opcode, 0x76};
             var emulator =
-                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             switch (opcode)
             {
                 case 0x09:
@@ -57,7 +58,7 @@ namespace JIT8080.Tests.Opcodes
         {
             var rom = new byte[] {opcode, 0x76};
             var emulator =
-                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.A.SetValue(emulator.Emulator, a);
             emulator.Internals.B.SetValue(emulator.Emulator, operand);
             emulator.Internals.CarryFlag.SetValue(emulator.Emulator, carryFlag);
@@ -90,7 +91,7 @@ namespace JIT8080.Tests.Opcodes
         {
             var rom = new byte[] {opcode, operand, 0x76};
             var emulator =
-                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.A.SetValue(emulator.Emulator, a);
             emulator.Internals.CarryFlag.SetValue(emulator.Emulator, prevCarry);
 
@@ -117,7 +118,7 @@ namespace JIT8080.Tests.Opcodes
                 0x76
             };
             var emulator =
-                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
             

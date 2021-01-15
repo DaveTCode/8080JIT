@@ -4,16 +4,14 @@ using JIT8080._8080;
 
 namespace JIT8080.Generator
 {
-    internal interface IEmitter
+    public interface IEmitter
     {
-        internal void Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField);
+        public void Emit(ILGenerator methodIL, CpuInternalBuilders internals);
     }
 
     internal class NOPEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField) =>
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals) =>
             methodIL.Emit(OpCodes.Nop);
 
         public override string ToString() => "NOP";
@@ -34,8 +32,7 @@ namespace JIT8080.Generator
             _operandWord = operandWord;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             switch (_opcode)
             {
@@ -82,7 +79,7 @@ namespace JIT8080.Generator
                 0x21 => $"LXI HL {_operand1:X2} {_operand2:X2}",
                 0x31 => $"LXI SP {_operandWord:X4}",
                 _ => throw new ArgumentOutOfRangeException(nameof(_opcode),
-                    $"LXI shouldn't be run for opcode byte {_opcode}"),
+                    $"LXI shouldn't be run for opcode byte {_opcode}")
             };
     }
 
@@ -97,8 +94,7 @@ namespace JIT8080.Generator
             _operand1 = operand1;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             switch (_opcode)
@@ -128,11 +124,11 @@ namespace JIT8080.Generator
                     methodIL.Emit(OpCodes.Stfld, internals.L);
                     break;
                 case 0x36: // MVI M
-                    methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                    methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                     methodIL.EmitLd8Immediate( _operand1);
                     methodIL.Emit(OpCodes.Ldarg_0);
                     methodIL.Emit(OpCodes.Call, internals.HL);
-                    methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+                    methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
                     break;
                 case 0x3E: // MVI A
                     methodIL.EmitLd8Immediate( _operand1);
@@ -155,7 +151,7 @@ namespace JIT8080.Generator
                 0x2E => $"MVI L {_operand1:X2}",
                 0x36 => $"MVI M {_operand1:X2}",
                 0x3E => $"MVI A {_operand1:X2}",
-                _ => throw new ArgumentOutOfRangeException(nameof(_opcode), $"Invalid opcode {_opcode} for MVI"),
+                _ => throw new ArgumentOutOfRangeException(nameof(_opcode), $"Invalid opcode {_opcode} for MVI")
             };
     }
 
@@ -168,8 +164,7 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        private static void EmitSourceInstructions(Register source, ILGenerator methodIL, CpuInternalBuilders internals,
-            FieldBuilder memoryBusField)
+        private static void EmitSourceInstructions(Register source, ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             switch (source)
@@ -196,34 +191,33 @@ namespace JIT8080.Generator
                     methodIL.Emit(OpCodes.Ldfld, internals.L);
                     break;
                 case Register.M:
-                    methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                    methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                     methodIL.Emit(OpCodes.Ldarg_0);
                     methodIL.Emit(OpCodes.Call, internals.HL);
-                    methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+                    methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(source), source, null);
             }
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var (source, destination) = DecodeOpcode();
 
             if (destination == Register.M)
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, memoryBusField);
-                EmitSourceInstructions(source, methodIL, internals, memoryBusField);
+                methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
+                EmitSourceInstructions(source, methodIL, internals);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Call, internals.HL);
-                methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+                methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
             }
             else
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
-                EmitSourceInstructions(source, methodIL, internals, memoryBusField);
+                EmitSourceInstructions(source, methodIL, internals);
                 methodIL.Emit(OpCodes.Stfld, destination switch
                 {
                     Register.A => internals.A,
@@ -233,7 +227,7 @@ namespace JIT8080.Generator
                     Register.E => internals.E,
                     Register.H => internals.H,
                     Register.L => internals.L,
-                    _ => throw new ArgumentOutOfRangeException(),
+                    _ => throw new ArgumentOutOfRangeException()
                 });
             }
         }
@@ -262,14 +256,13 @@ namespace JIT8080.Generator
             _operand = operand;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldc_I4, _operand);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
             methodIL.Emit(OpCodes.Stfld, internals.A);
         }
 
@@ -285,15 +278,14 @@ namespace JIT8080.Generator
             _operand = operand;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
             methodIL.Emit(OpCodes.Ldc_I4, _operand);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
         }
 
         public override string ToString() => $"STA {_operand:X4}";
@@ -301,8 +293,7 @@ namespace JIT8080.Generator
 
     internal class CMAEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -316,8 +307,7 @@ namespace JIT8080.Generator
 
     internal class STCEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldc_I4_1);
@@ -329,8 +319,7 @@ namespace JIT8080.Generator
 
     internal class CMCEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -351,8 +340,7 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -443,8 +431,7 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var regPairMethod = _opcode switch
             {
@@ -454,12 +441,12 @@ namespace JIT8080.Generator
             };
 
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Call, regPairMethod);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
         }
 
         public override string ToString() => _opcode switch
@@ -479,8 +466,7 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var regPairMethod = _opcode switch
             {
@@ -491,10 +477,10 @@ namespace JIT8080.Generator
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Call, regPairMethod);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
             methodIL.Emit(OpCodes.Stfld, internals.A);
         }
 
@@ -515,14 +501,13 @@ namespace JIT8080.Generator
             _port = port;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, ioHandlerField);
+            methodIL.Emit(OpCodes.Ldfld, internals.IOHandlerField);
             methodIL.EmitLd8Immediate( _port);
-            methodIL.Emit(OpCodes.Callvirt, ioHandlerField.FieldType.GetMethod("In")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.IOHandlerField.FieldType.GetMethod("In")!);
             methodIL.Emit(OpCodes.Stfld, internals.A);
         }
 
@@ -538,15 +523,14 @@ namespace JIT8080.Generator
             _port = port;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, ioHandlerField);
+            methodIL.Emit(OpCodes.Ldfld, internals.IOHandlerField);
             methodIL.EmitLd8Immediate( _port);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
-            methodIL.Emit(OpCodes.Callvirt, ioHandlerField.FieldType.GetMethod("Out")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.IOHandlerField.FieldType.GetMethod("Out")!);
         }
 
         public override string ToString() => $"IN {_port}";
@@ -581,8 +565,7 @@ namespace JIT8080.Generator
             };
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var field = _register switch
             {
@@ -601,10 +584,10 @@ namespace JIT8080.Generator
             if (field == null)
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Call, internals.HL);
-                methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+                methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
             }
             else
             {
@@ -622,11 +605,11 @@ namespace JIT8080.Generator
             if (field == null)
             {
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Ldloc, result.LocalIndex);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Call, internals.HL);
-                methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+                methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
             }
             else
             {
@@ -647,8 +630,7 @@ namespace JIT8080.Generator
 
     internal class RLCEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -682,8 +664,7 @@ namespace JIT8080.Generator
 
     internal class RRCEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
@@ -716,8 +697,7 @@ namespace JIT8080.Generator
 
     internal class RALEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.DeclareLocal(typeof(int));
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -749,8 +729,7 @@ namespace JIT8080.Generator
 
     internal class RAREmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.DeclareLocal(typeof(int));
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -797,8 +776,7 @@ namespace JIT8080.Generator
             };
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -849,21 +827,20 @@ namespace JIT8080.Generator
             _address = address;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.L);
             methodIL.Emit(OpCodes.Ldc_I4, _address);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.H);
             methodIL.Emit(OpCodes.Ldc_I4, _address + 1);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
         }
 
         public override string ToString() => $"SHLD {_address:X4}";
@@ -878,21 +855,20 @@ namespace JIT8080.Generator
             _address = address;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldc_I4, _address);
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
             methodIL.Emit(OpCodes.Stfld, internals.L);
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
-            methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+            methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
             methodIL.Emit(OpCodes.Ldc_I4, (ushort) (_address + 1));
-            methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+            methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
             methodIL.Emit(OpCodes.Stfld, internals.H);
         }
 
@@ -929,8 +905,7 @@ namespace JIT8080.Generator
             _flagValue = flagValue;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             if (_flagField != null)
             {
@@ -964,7 +939,7 @@ namespace JIT8080.Generator
             0xEA => $"JPE {_address:X4}",
             0xF2 => $"JP {_address:X4}",
             0xFA => $"JM {_address:X4}",
-            _ => throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode, "Invalid opcode for jump with flag"),
+            _ => throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode, "Invalid opcode for jump with flag")
         };
     }
 
@@ -977,22 +952,21 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             switch (_opcode)
             {
                 case 0xC5: // PUSH B
-                    StackUtilities.PushPairToStack(methodIL, internals.B, internals.C, internals.StackPointer, memoryBusField);
+                    StackUtilities.PushPairToStack(methodIL, internals.B, internals.C, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xD5: // PUSH D
-                    StackUtilities.PushPairToStack(methodIL, internals.D, internals.E, internals.StackPointer, memoryBusField);
+                    StackUtilities.PushPairToStack(methodIL, internals.D, internals.E, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xE5: // PUSH H
-                    StackUtilities.PushPairToStack(methodIL, internals.H, internals.L, internals.StackPointer, memoryBusField);
+                    StackUtilities.PushPairToStack(methodIL, internals.H, internals.L, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xF5: // PUSH PSW
-                    StackUtilities.PushPairToStack(methodIL, internals.A, internals.GetFlagRegister, internals.StackPointer, memoryBusField);
+                    StackUtilities.PushPairToStack(methodIL, internals.A, internals.GetFlagRegister, internals.StackPointer, internals.MemoryBusField);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode,
@@ -1020,22 +994,21 @@ namespace JIT8080.Generator
             _opcode = opcode;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             switch (_opcode)
             {
                 case 0xC1: // POP B
-                    StackUtilities.PopPairFromStack(methodIL, internals.B, internals.C, internals.StackPointer, memoryBusField);
+                    StackUtilities.PopPairFromStack(methodIL, internals.B, internals.C, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xD1: // POP D
-                    StackUtilities.PopPairFromStack(methodIL, internals.D, internals.E, internals.StackPointer, memoryBusField);
+                    StackUtilities.PopPairFromStack(methodIL, internals.D, internals.E, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xE1: // POP H
-                    StackUtilities.PopPairFromStack(methodIL, internals.H, internals.L, internals.StackPointer, memoryBusField);
+                    StackUtilities.PopPairFromStack(methodIL, internals.H, internals.L, internals.StackPointer, internals.MemoryBusField);
                     break;
                 case 0xF1: // POP PSW
-                    StackUtilities.PopPairFromStack(methodIL, internals.A, internals.SetFlagRegister, internals.StackPointer, memoryBusField);
+                    StackUtilities.PopPairFromStack(methodIL, internals.A, internals.SetFlagRegister, internals.StackPointer, internals.MemoryBusField);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode,
@@ -1053,7 +1026,7 @@ namespace JIT8080.Generator
         };
     }
 
-    internal class CallEmitter : IEmitter
+    public class CallEmitter : IEmitter
     {
         private readonly byte _opcode;
         private readonly ushort _returnAddress;
@@ -1062,7 +1035,7 @@ namespace JIT8080.Generator
         private readonly Label _destination;
         private readonly ushort _address;
 
-        internal CallEmitter(byte opcode, ushort returnAddress, Label destination, ushort address)
+        public CallEmitter(byte opcode, ushort returnAddress, Label destination, ushort address)
         {
             _opcode = opcode;
             _returnAddress = returnAddress;
@@ -1077,8 +1050,7 @@ namespace JIT8080.Generator
             _flagValue = flagValue;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        public void Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             if (_flagField != null)
             {
@@ -1087,14 +1059,14 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Ldfld, _flagField);
                 methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
-                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, memoryBusField);
+                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Br, _destination);
                 methodIL.MarkLabel(skipCallLabel);
             }
             else
             {
                 // CALL instruction
-                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, memoryBusField);
+                StackUtilities.PushWordToStack(methodIL, internals.StackPointer, _returnAddress, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Br, _destination);
             }
         }
@@ -1148,8 +1120,7 @@ namespace JIT8080.Generator
             _flagValue = flagValue;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             if (_fieldFlag != null)
             {
@@ -1158,7 +1129,7 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Ldfld, _fieldFlag);
                 methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
-                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
                 methodIL.MarkLabel(skipCallLabel);
             }
@@ -1169,13 +1140,13 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Call, _methodFlag);
                 methodIL.Emit(_flagValue ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
                 methodIL.Emit(OpCodes.Bne_Un, skipCallLabel);
-                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
                 methodIL.MarkLabel(skipCallLabel);
             }
             else
             {
-                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, memoryBusField);
+                StackUtilities.PopPairFromStack(methodIL, internals.DestinationAddress, internals.StackPointer, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Br, internals.JumpTableStart);
             }
         }
@@ -1198,8 +1169,7 @@ namespace JIT8080.Generator
 
     internal class XCHGEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var h = methodIL.DeclareLocal(typeof(byte));
             var l = methodIL.DeclareLocal(typeof(byte));
@@ -1231,8 +1201,7 @@ namespace JIT8080.Generator
 
     internal class XTHLEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var temp = methodIL.DeclareLocal(typeof(byte));
 
@@ -1243,7 +1212,7 @@ namespace JIT8080.Generator
                 methodIL.Emit(OpCodes.Stloc, temp);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Ldfld, internals.StackPointer);
                 if (spInc) // H is stored at SP + 1
@@ -1251,10 +1220,10 @@ namespace JIT8080.Generator
                     methodIL.Emit(OpCodes.Ldc_I4_1);
                     methodIL.Emit(OpCodes.Add);
                 }
-                methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("ReadByte")!);
+                methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("ReadByte")!);
                 methodIL.Emit(OpCodes.Stfld, register);
                 methodIL.Emit(OpCodes.Ldarg_0);
-                methodIL.Emit(OpCodes.Ldfld, memoryBusField);
+                methodIL.Emit(OpCodes.Ldfld, internals.MemoryBusField);
                 methodIL.Emit(OpCodes.Ldloc, temp);
                 methodIL.Emit(OpCodes.Ldarg_0);
                 methodIL.Emit(OpCodes.Ldfld, internals.StackPointer);
@@ -1263,7 +1232,7 @@ namespace JIT8080.Generator
                     methodIL.Emit(OpCodes.Ldc_I4_1);
                     methodIL.Emit(OpCodes.Add);
                 }
-                methodIL.Emit(OpCodes.Callvirt, memoryBusField.FieldType.GetMethod("WriteByte")!);
+                methodIL.Emit(OpCodes.Callvirt, internals.MemoryBusField.FieldType.GetMethod("WriteByte")!);
             }
         }
 
@@ -1279,8 +1248,7 @@ namespace JIT8080.Generator
             _enable = enable;
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(_enable ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
@@ -1290,14 +1258,13 @@ namespace JIT8080.Generator
         public override string ToString() => _enable switch
         {
             true => "EI",
-            false => "DI",
+            false => "DI"
         };
     }
 
     internal class HLTEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             // TODO - Probably worth noting what caused a return via an enum?
             methodIL.Emit(OpCodes.Ret);
@@ -1310,8 +1277,7 @@ namespace JIT8080.Generator
     {
         public override string ToString() => "SPHL";
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
@@ -1327,8 +1293,7 @@ namespace JIT8080.Generator
 
     internal class PCHLEmitter : IEmitter
     {
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.H);

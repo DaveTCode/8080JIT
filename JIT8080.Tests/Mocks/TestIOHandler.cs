@@ -1,6 +1,6 @@
 ﻿using JIT8080._8080;
 
-namespace JIT8080.Tests
+namespace JIT8080.Tests.Mocks
 {
     internal class TestIOHandler : IIOHandler
     {

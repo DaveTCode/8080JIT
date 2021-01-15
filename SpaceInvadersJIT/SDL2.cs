@@ -1196,8 +1196,8 @@ namespace SpaceInvadersJIT
 				window = messageboxdata.window,
 				title = INTERNAL_AllocUTF8(messageboxdata.title),
 				message = INTERNAL_AllocUTF8(messageboxdata.message),
-				numbuttons = messageboxdata.numbuttons,
-			};
+				numbuttons = messageboxdata.numbuttons
+            };
 
 			var buttons = new INTERNAL_SDL_MessageBoxButtonData[messageboxdata.numbuttons];
 			for (int i = 0; i < messageboxdata.numbuttons; i++)
@@ -1206,8 +1206,8 @@ namespace SpaceInvadersJIT
 				{
 					flags = messageboxdata.buttons[i].flags,
 					buttonid = messageboxdata.buttons[i].buttonid,
-					text = INTERNAL_AllocUTF8(messageboxdata.buttons[i].text),
-				};
+					text = INTERNAL_AllocUTF8(messageboxdata.buttons[i].text)
+                };
 			}
 
 			if (messageboxdata.colorScheme != null)
@@ -1350,7 +1350,7 @@ namespace SpaceInvadersJIT
 			SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,
 			SDL_GL_CONTEXT_RELEASE_BEHAVIOR,
 			SDL_GL_CONTEXT_RESET_NOTIFICATION,	/* Requires >= 2.0.6 */
-			SDL_GL_CONTEXT_NO_ERROR,		/* Requires >= 2.0.6 */
+			SDL_GL_CONTEXT_NO_ERROR /* Requires >= 2.0.6 */
 		}
 
 		[Flags]
@@ -1434,7 +1434,7 @@ namespace SpaceInvadersJIT
 			SDL_WINDOW_TOOLTIP =		0x00040000,	/* Requires >= 2.0.5 */
 			SDL_WINDOW_POPUP_MENU =		0x00080000,	/* Requires >= 2.0.5 */
 			SDL_WINDOW_VULKAN =		0x10000000,	/* Requires >= 2.0.6 */
-			SDL_WINDOW_METAL =		0x2000000,	/* Requires >= 2.0.14 */
+			SDL_WINDOW_METAL =		0x2000000 /* Requires >= 2.0.14 */
 		}
 
 		/* Only available in 2.0.4 or higher. */
@@ -6476,8 +6476,8 @@ namespace SpaceInvadersJIT
 			SDL_CONTROLLER_BUTTON_PADDLE3,
 			SDL_CONTROLLER_BUTTON_PADDLE4,
 			SDL_CONTROLLER_BUTTON_TOUCHPAD,
-			SDL_CONTROLLER_BUTTON_MAX,
-		}
+			SDL_CONTROLLER_BUTTON_MAX
+        }
 
 		public enum SDL_GameControllerType
 		{
@@ -6488,7 +6488,7 @@ namespace SpaceInvadersJIT
 			SDL_CONTROLLER_TYPE_PS4,
 			SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO,
 			SDL_CONTROLLER_TYPE_VIRTUAL,	/* Requires >= 2.0.14 */
-			SDL_CONTROLLER_TYPE_PS5,	/* Requires >= 2.0.14 */
+			SDL_CONTROLLER_TYPE_PS5 /* Requires >= 2.0.14 */
 		}
 
 		// FIXME: I'd rather this somehow be private...

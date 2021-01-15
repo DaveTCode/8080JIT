@@ -11,7 +11,7 @@ namespace JIT8080.Generator
             var wlParams = new[] 
             {
                 typeof(string),
-                typeof(object[]),
+                typeof(object[])
             };
 
             var writeLineMethodInfo = typeof(Console).GetMethod("WriteLine", wlParams);
@@ -27,7 +27,7 @@ namespace JIT8080.Generator
                 (internals.D, OpCodes.Ldc_I4_3), 
                 (internals.E, OpCodes.Ldc_I4_4), 
                 (internals.H, OpCodes.Ldc_I4_5), 
-                (internals.L, OpCodes.Ldc_I4_6), 
+                (internals.L, OpCodes.Ldc_I4_6)
             })
             {
                 ilGenerator.Emit(OpCodes.Dup);
@@ -51,7 +51,7 @@ namespace JIT8080.Generator
                 (internals.CarryFlag, 9),
                 (internals.AuxCarryFlag, 10), 
                 (internals.ParityFlag, 11), 
-                (internals.ZeroFlag, 12), 
+                (internals.ZeroFlag, 12)
             })
             {
                 ilGenerator.Emit(OpCodes.Dup);

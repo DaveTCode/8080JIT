@@ -1,5 +1,6 @@
 ﻿using System;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests.Opcodes
@@ -19,11 +20,11 @@ namespace JIT8080.Tests.Opcodes
                 secondRegisterOpcode, 0x02, // MVI C, 0x02
                 pushOpcode,
                 popOpcode,
-                0x76, // HLT 
+                0x76 // HLT 
             };
             var testMemoryBus = new TestMemoryBus(setupRom);
             var emulator =
-                Emulator.CreateEmulator(setupRom, testMemoryBus, new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(setupRom, testMemoryBus, new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
 
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 
@@ -59,11 +60,11 @@ namespace JIT8080.Tests.Opcodes
                 0x37, // STC
                 0xF5, // PUSH PSW
                 0xF1, // POP PSW
-                0x76, // HLT 
+                0x76 // HLT 
             };
             var testMemoryBus = new TestMemoryBus(setupRom);
             var emulator =
-                Emulator.CreateEmulator(setupRom, testMemoryBus, new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(setupRom, testMemoryBus, new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
 
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());
 

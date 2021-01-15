@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -167,8 +166,13 @@ namespace JIT8080.Generator
         /// <param name="jumpLabels">
         /// Provides labels for every address in the ROM for jump/call commands
         /// </param>
-        /// <returns></returns>
-        private static (IEmitter, byte) GenerateILForOpcode(Span<byte> program, int programCounter,
+        /// <returns>
+        /// A tuple containing:
+        /// 1. The emitter which can be called to put instructions on an IL stream
+        /// 2. The number of bytes consumed by this operation
+        /// 3. The number of cycles taken by the operation (non-branching)
+        /// </returns>
+        private static (IEmitter, byte, long) GenerateILForOpcode(Span<byte> program, int programCounter,
             CpuInternalBuilders internals, Label[] jumpLabels)
         {
             var opcodeByte = program[programCounter];
@@ -223,7 +227,7 @@ namespace JIT8080.Generator
                 Opcodes8080.PUSH => new PUSHEmitter(opcodeByte),
                 Opcodes8080.ADI => new General8BitALUEmitter(opcodeByte, opcode, operand1),
                 Opcodes8080.RST => new CallEmitter(opcodeByte, (ushort) (programCounter + opcode.Length()),
-                    jumpLabels[opcodeByte & 0b0011_1000], (ushort) (operandWord % program.Length)),
+                    jumpLabels[opcodeByte & 0b0011_1000], (ushort) (opcodeByte & 0b0011_1000)),
                 Opcodes8080.RZ => new RetEmitter(opcodeByte, internals.ZeroFlag, true),
                 Opcodes8080.RET => new RetEmitter(opcodeByte),
                 Opcodes8080.JZ => new JumpOnFlagEmitter(opcodeByte, internals.ZeroFlag, true,
@@ -284,7 +288,7 @@ namespace JIT8080.Generator
                 _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, "Invalid 8080 opcode")
             };
 
-            return (emitter, opcode.Length());
+            return (emitter, opcode.Length(), opcode.Cycles(opcodeByte));
         }
 
         private static void CreateConstructor(TypeBuilder typeBuilder, FieldBuilder memoryBusField,
@@ -331,18 +335,23 @@ namespace JIT8080.Generator
         /// This will get called during VBlank interrupts to trigger a redraw
         /// </param>
         /// 
+        /// <param name="interruptUtils">
+        /// Allowance for the owning computer to register code which runs at
+        /// various points during execution and can fire interrupts.
+        /// </param>
+        ///
         /// <param name="initialProgramCounter">
         /// Defines the first instruction which will be executed (e.g. on CP/M
         /// machines 0x100 is the first operation executed)
         /// </param>
-        ///
+        /// 
         /// <returns>
         /// An object which contains references to all the field info and 
         /// method info required to make use of (and inspect the running 
         /// state) of the emulator.
         /// </returns>
         public static Cpu8080 CreateEmulator(Span<byte> program, IMemoryBus8080 memoryBus, IIOHandler ioHandler,
-            IRenderer renderer, ushort initialProgramCounter = 0x0)
+            IRenderer renderer, IInterruptUtils interruptUtils, ushort initialProgramCounter = 0x0)
         {
             var asmName = new AssemblyName("Emulator");
             var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
@@ -367,11 +376,14 @@ namespace JIT8080.Generator
                 CarryFlag = typeBuilder.DefineField("CarryFlag", typeof(bool), FieldAttributes.Public),
                 ParityFlag = typeBuilder.DefineField("ParityFlag", typeof(bool), FieldAttributes.Public),
                 StackPointer = typeBuilder.DefineField("StackPointer", typeof(ushort), FieldAttributes.Public),
-                Result = typeBuilder.DefineField("Result", typeof(int), FieldAttributes.Public),
                 InterruptEnable = typeBuilder.DefineField("InterruptEnable", typeof(bool), FieldAttributes.Public),
+                CycleCounter = typeBuilder.DefineField("CycleCounter", typeof(long), FieldAttributes.Public),
+                MemoryBusField = typeBuilder.DefineField("_memoryBus", typeof(IMemoryBus8080), FieldAttributes.Private),
+                IOHandlerField = typeBuilder.DefineField("_ioHandler", typeof(IIOHandler), FieldAttributes.Private),
+                RendererField = typeBuilder.DefineField("_renderer", typeof(IRenderer), FieldAttributes.Private),
                 ProgramLabels = Enumerable.Range(0, program.Length).Select(_ => methodIL.DefineLabel()).ToArray(),
                 DestinationAddress = methodIL.DeclareLocal(typeof(ushort)),
-                JumpTableStart = methodIL.DefineLabel(),
+                JumpTableStart = methodIL.DefineLabel()
             };
             cpuInternal.HL = CreateRegisterPairAccess(typeBuilder, "HL", cpuInternal.H, cpuInternal.L);
             cpuInternal.BC = CreateRegisterPairAccess(typeBuilder, "BC", cpuInternal.B, cpuInternal.C);
@@ -381,22 +393,22 @@ namespace JIT8080.Generator
             cpuInternal.SetDE = CreateRegisterPairSet(typeBuilder, "SetHL", cpuInternal.D, cpuInternal.E);
             cpuInternal.GetFlagRegister = CreateFlagRegister(typeBuilder, cpuInternal);
             cpuInternal.SetFlagRegister = CreateSetFlagRegister(typeBuilder, cpuInternal);
-
-            var memoryBusField = typeBuilder.DefineField("_memoryBus", typeof(IMemoryBus8080), FieldAttributes.Private);
-            var ioHandlerField = typeBuilder.DefineField("_ioHandler", typeof(IIOHandler), FieldAttributes.Private);
-            var rendererField = typeBuilder.DefineField("_renderer", typeof(IRenderer), FieldAttributes.Private);
-            CreateConstructor(typeBuilder, memoryBusField, ioHandlerField, rendererField);
+            
+            CreateConstructor(typeBuilder, cpuInternal.MemoryBusField, cpuInternal.IOHandlerField, cpuInternal.RendererField);
 
             // Then we create the IL for every position in the program, whether
             // that position will ever be considered code or not
-            var operationsAtIndex = new (IEmitter, byte)[program.Length];
+            var operationsAtIndex = new (IEmitter, byte, long)[program.Length];
             for (var pc = 0; pc < program.Length; pc++)
             {
                 operationsAtIndex[pc] = GenerateILForOpcode(program, pc, cpuInternal, cpuInternal.ProgramLabels);
             }
             var seenRomIndexes = new HashSet<int>(program.Length);
+            
+            // Allow for definition of locals and other emits by an interrupt util handler
+            interruptUtils.PreProgramEmit(methodIL);
 
-            // Skip the jump table and start at PC 0
+            // Skip the jump table and start at the defined initial PC (defaults to 0)
             methodIL.Emit(OpCodes.Br, cpuInternal.ProgramLabels[initialProgramCounter]);
 
             // Place the jump table
@@ -415,14 +427,31 @@ namespace JIT8080.Generator
                 var hasLooped = false;
                 while (!hasLooped)
                 {
-                    var (instructions, instructionLength) = operationsAtIndex[programCounter];
+                    var (instructions, instructionLength, cyclesTaken) = operationsAtIndex[programCounter];
                     methodIL.MarkLabel(cpuInternal.ProgramLabels[programCounter]);
+                    
+                    // Check for interrupts
+                    interruptUtils.PostInstructionEmit(methodIL, cpuInternal, (ushort)programCounter);
+                    
+                    // Clear the cycle counter so that we know the exact number of cycles that
+                    // the operation took
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldc_I8, 0L);
+                    methodIL.Emit(OpCodes.Stfld, cpuInternal.CycleCounter);
 
 #if DEBUG
                     methodIL.EmitWriteLine($"{programCounter:X4} - {instructions}");
                     methodIL.EmitDebugString(cpuInternal);
 #endif
-                    instructions.Emit(methodIL, cpuInternal, memoryBusField, ioHandlerField);
+                    instructions.Emit(methodIL, cpuInternal);
+                    
+                    // Store off the number of cycles in the last instruction
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldarg_0);
+                    methodIL.Emit(OpCodes.Ldfld, cpuInternal.CycleCounter);
+                    methodIL.Emit(OpCodes.Ldc_I8, cyclesTaken);
+                    methodIL.Emit(OpCodes.Add);
+                    methodIL.Emit(OpCodes.Stfld, cpuInternal.CycleCounter);
 
                     seenRomIndexes.Add(programCounter);
                     programCounter = (programCounter + instructionLength) % program.Length;
@@ -442,8 +471,6 @@ namespace JIT8080.Generator
             }
 
             var t = typeBuilder.CreateType();
-
-            Debug.Assert(t != null, nameof(t) + " != null");
             return new Cpu8080
             {
                 Internals = new Cpu8080Internals
@@ -467,10 +494,10 @@ namespace JIT8080.Generator
                     Result = t.GetField("Result"),
                     GetFlagRegister = t.GetMethod("GetFlagRegister"),
                     SetFlagRegister = t.GetMethod("SetFlagRegister"),
-                    InterruptEnable = t.GetField("InterruptEnable"),
+                    InterruptEnable = t.GetField("InterruptEnable")
                 },
                 Emulator = Activator.CreateInstance(t, memoryBus, ioHandler, renderer),
-                Run = t.GetMethod("Run"),
+                Run = t.GetMethod("Run")
             };
         }
 

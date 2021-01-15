@@ -1,5 +1,6 @@
 ﻿using System;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests
@@ -17,7 +18,7 @@ namespace JIT8080.Tests
         public void TestGetFlagRegister(byte expected, bool sign, bool zero, bool aux, bool parity, bool carry)
         {
             var rom = new byte[] {0};
-            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.SignFlag.SetValue(emulator.Emulator, sign);
             emulator.Internals.ZeroFlag.SetValue(emulator.Emulator, zero);
             emulator.Internals.AuxCarryFlag.SetValue(emulator.Emulator, aux);
@@ -38,7 +39,7 @@ namespace JIT8080.Tests
         public void TestSetFlagRegister(byte initial, bool sign, bool zero, bool aux, bool parity, bool carry)
         {
             var rom = new byte[] {0};
-            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.SetFlagRegister.Invoke(emulator.Emulator, new object[] {initial});
 
             Assert.Equal(sign, emulator.Internals.SignFlag.GetValue(emulator.Emulator));
@@ -72,7 +73,7 @@ namespace JIT8080.Tests
             };
 
             var rom = new byte[] {0x04, 0x76}; // INR B -> HLT
-            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.B.SetValue(emulator.Emulator, (byte)0xFF);
 
             for (var ii = 0; ii < 0xFF; ii++)

@@ -3,7 +3,7 @@ using System.Reflection.Emit;
 
 namespace JIT8080.Generator
 {
-    internal class CpuInternalBuilders
+    public class CpuInternalBuilders
     {
         internal FieldBuilder A;
         internal FieldBuilder B;
@@ -26,23 +26,18 @@ namespace JIT8080.Generator
         internal MethodBuilder SetDE;
         internal MethodBuilder GetFlagRegister;
         internal MethodBuilder SetFlagRegister;
-        internal FieldInfo InterruptEnable;
+        public FieldBuilder InterruptEnable;
+        public FieldBuilder CycleCounter;
 
-        /// <summary>
-        /// The result of an operation is cached off so that we can calculate
-        /// the flags (zero, sign, carry & parity at point of use) instead
-        /// of on each arithmetic operation
-        /// </summary>
-        /// <remarks>
-        /// Note that this is stored as an int so that we can get the carry bit
-        /// </remarks>
-        internal FieldBuilder Result;
+        public FieldBuilder MemoryBusField;
+        public FieldBuilder IOHandlerField;
+        public FieldBuilder RendererField;
 
         /// <summary>
         /// We emit a label for each 8080 opcode to make it possible to jump
         /// to arbitrary addresses
         /// </summary>
-        internal Label[] ProgramLabels;
+        public Label[] ProgramLabels;
 
         /// <summary>
         /// Common variable to hold the destination of a runtime jump (e.g. PCHL)

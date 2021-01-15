@@ -1,15 +1,16 @@
 ﻿using System;
+using System.Reflection.Emit;
 using System.Text;
 using JIT8080._8080;
 using JIT8080.Generator;
 
 namespace CPMEmulator
 {
-    internal class CPMApplication : IMemoryBus8080, IIOHandler, IRenderer
+    internal class CPMApplication : IMemoryBus8080, IIOHandler, IRenderer, IInterruptUtils
     {
         private static readonly byte[] Bios = {
             0x76, 0x76, 0x76, 0x76, 0x76, // 00-04 all just HLT machine
-            0xD3, 0x00, 0x00, 0xC9, // Treat BDOS entrypoint as OUT (0), RET
+            0xD3, 0x00, 0x00, 0xC9 // Treat BDOS entrypoint as OUT (0), RET
         };
 
         internal Cpu8080 Emulator { get; set; }
@@ -19,7 +20,7 @@ namespace CPMEmulator
 
         public CPMApplication(byte[] rom)
         {
-            if (rom.Length > (0xFFFF - 0x100))
+            if (rom.Length > 0xFFFF - 0x100)
             {
                 throw new ArgumentOutOfRangeException(nameof(rom), rom, "Rom too large");
             }
@@ -89,6 +90,14 @@ namespace CPMEmulator
         public void VBlank()
         {
             throw new NotImplementedException();
+        }
+
+        public void PreProgramEmit(ILGenerator methodIL)
+        {
+        }
+
+        public void PostInstructionEmit(ILGenerator methodIL, CpuInternalBuilders internals, ushort programCounter)
+        {
         }
     }
 }

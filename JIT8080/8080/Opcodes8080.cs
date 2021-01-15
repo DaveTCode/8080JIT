@@ -84,7 +84,7 @@ namespace JIT8080._8080
         JM,
         EI,
         CM,
-        CPI,
+        CPI
     }
 
     internal static class Opcodes8080Extensions
@@ -182,7 +182,110 @@ namespace JIT8080._8080
             Opcodes8080.EI => 1,
             Opcodes8080.CM => 3,
             Opcodes8080.CPI => 2,
-            _ => throw new NotImplementedException(),
+            _ => throw new NotImplementedException()
+        };
+
+        /// <summary>
+        /// The number of cpu cycles for the base version of this opcode.
+        /// 
+        /// Note that conditional branching operations take _more_ cycles if
+        /// they branch. This is handled by the emit logic itself.
+        /// </summary>
+        /// 
+        /// <param name="opcode">
+        /// The decoded opcode
+        /// </param>
+        /// 
+        /// <param name="opcodeByte">
+        /// The byte corresponding to the opcode. This is needed to
+        /// disambiguate between operations on memory addresses as opposed
+        /// to registers (memory addresses take more cycles to access)
+        /// </param>
+        ///
+        /// <returns>
+        /// The number of cpu cycles for the base version of this opcode
+        /// </returns>
+        internal static long Cycles(this Opcodes8080 opcode, byte opcodeByte) => opcode switch
+        {
+            Opcodes8080.NOP => 4,
+            Opcodes8080.LXI => 10,
+            Opcodes8080.STAX => 7,
+            Opcodes8080.INX => 5,
+            Opcodes8080.INR => (opcodeByte == 0x34) ? 7 : 5,
+            Opcodes8080.DCR => (opcodeByte == 0x35) ? 7 : 5,
+            Opcodes8080.MVI => (opcodeByte == 0x36) ? 10 : 7,
+            Opcodes8080.RLC => 4,
+            Opcodes8080.DAD => 10,
+            Opcodes8080.LDAX => 7,
+            Opcodes8080.DCX => 5,
+            Opcodes8080.RRC => 4,
+            Opcodes8080.RAL => 4,
+            Opcodes8080.RAR => 4,
+            Opcodes8080.SHLD => 16,
+            Opcodes8080.DAA => 4,
+            Opcodes8080.LHLD => 16,
+            Opcodes8080.CMA => 4,
+            Opcodes8080.STA => 13,
+            Opcodes8080.STC => 4,
+            Opcodes8080.LDA => 13,
+            Opcodes8080.CMC => 4,
+            Opcodes8080.MOV => (opcodeByte >= 0x70 && opcodeByte < 0x78) ? 7 : 5,
+            Opcodes8080.HLT => 7,
+            Opcodes8080.ADD => (opcodeByte == 0x86) ? 7 : 4,
+            Opcodes8080.ADC => (opcodeByte == 0x8E) ? 7 : 4,
+            Opcodes8080.SUB => (opcodeByte == 0x96) ? 7 : 4,
+            Opcodes8080.SBB => (opcodeByte == 0x9E) ? 7 : 4,
+            Opcodes8080.ANA => (opcodeByte == 0xA6) ? 7 : 4,
+            Opcodes8080.XRA => (opcodeByte == 0xAE) ? 7 : 4,
+            Opcodes8080.ORA => (opcodeByte == 0xB6) ? 7 : 4,
+            Opcodes8080.CMP => (opcodeByte == 0xBE) ? 7 : 4,
+            Opcodes8080.RNZ => 5,
+            Opcodes8080.POP => 10,
+            Opcodes8080.JNZ => 10,
+            Opcodes8080.JMP => 10,
+            Opcodes8080.CNZ => 11,
+            Opcodes8080.PUSH => 11,
+            Opcodes8080.ADI => 7,
+            Opcodes8080.RST => 11,
+            Opcodes8080.RZ => 5,
+            Opcodes8080.RET => 10,
+            Opcodes8080.JZ => 10,
+            Opcodes8080.CZ => 11,
+            Opcodes8080.CALL => 17,
+            Opcodes8080.ACI => 7,
+            Opcodes8080.RNC => 5,
+            Opcodes8080.JNC => 10,
+            Opcodes8080.OUT => 10,
+            Opcodes8080.CNC => 11,
+            Opcodes8080.SUI => 7,
+            Opcodes8080.RC => 5,
+            Opcodes8080.JC => 10,
+            Opcodes8080.IN => 10,
+            Opcodes8080.CC => 11,
+            Opcodes8080.SBI => 7,
+            Opcodes8080.RPO => 5,
+            Opcodes8080.JPO => 10,
+            Opcodes8080.XTHL => 18,
+            Opcodes8080.CPO => 11,
+            Opcodes8080.ANI => 7,
+            Opcodes8080.RPE => 5,
+            Opcodes8080.PCHL => 5,
+            Opcodes8080.JPE => 10,
+            Opcodes8080.XCHG => 5,
+            Opcodes8080.CPE => 11,
+            Opcodes8080.XRI => 7,
+            Opcodes8080.RP => 5,
+            Opcodes8080.JP => 10,
+            Opcodes8080.DI => 4,
+            Opcodes8080.CP => 11,
+            Opcodes8080.ORI => 7,
+            Opcodes8080.RM => 5,
+            Opcodes8080.SPHL => 5,
+            Opcodes8080.JM => 10,
+            Opcodes8080.EI => 4,
+            Opcodes8080.CM => 11,
+            Opcodes8080.CPI => 7,
+            _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, null)
         };
     }
 
@@ -337,7 +440,7 @@ namespace JIT8080._8080
             0xFC => Opcodes8080.CM,
             0xFD => Opcodes8080.CALL,
             0xFE => Opcodes8080.CPI,
-            0xFF => Opcodes8080.RST,
+            0xFF => Opcodes8080.RST
         };
     }
 }

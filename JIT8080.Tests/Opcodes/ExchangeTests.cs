@@ -1,5 +1,6 @@
 ﻿using System;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests.Opcodes
@@ -12,7 +13,7 @@ namespace JIT8080.Tests.Opcodes
         public void TestXCHGOpcode(byte h, byte l, byte d, byte e)
         {
             var rom = new byte[] {0xEB, 0x76};
-            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, new TestMemoryBus(rom), new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.D.SetValue(emulator.Emulator, d);
@@ -35,7 +36,7 @@ namespace JIT8080.Tests.Opcodes
             var memoryBus = new TestMemoryBus(rom);
             memoryBus.WriteByte(mem1, 0x3500);
             memoryBus.WriteByte(mem2, 0x3501);
-            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.StackPointer.SetValue(emulator.Emulator, (ushort)0x3500);
@@ -56,7 +57,7 @@ namespace JIT8080.Tests.Opcodes
         {
             var rom = new byte[] {0xF9, 0x76};
             var memoryBus = new TestMemoryBus(rom);
-            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer());
+            var emulator = Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.H.SetValue(emulator.Emulator, h);
             emulator.Internals.L.SetValue(emulator.Emulator, l);
             emulator.Internals.StackPointer.SetValue(emulator.Emulator, (ushort)0x1234);

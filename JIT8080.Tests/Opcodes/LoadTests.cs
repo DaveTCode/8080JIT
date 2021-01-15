@@ -1,5 +1,6 @@
 ﻿using System;
 using JIT8080.Generator;
+using JIT8080.Tests.Mocks;
 using Xunit;
 
 namespace JIT8080.Tests.Opcodes
@@ -15,7 +16,7 @@ namespace JIT8080.Tests.Opcodes
             var rom = new byte[] {0x32, 0x00, 0x01, 0xAF, 0x3A, 0x00, 0x01, 0x76};
             var memoryBus = new TestMemoryBus(rom);
             var emulator =
-                Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer());
+                Emulator.CreateEmulator(rom, memoryBus, new TestIOHandler(), new TestRenderer(), new TestInterruptUtils());
             emulator.Internals.A.SetValue(emulator.Emulator, (byte)0x10);
 
             emulator.Run.Invoke(emulator.Emulator, Array.Empty<object>());

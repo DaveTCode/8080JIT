@@ -35,7 +35,7 @@ namespace JIT8080.Generator
 
         private static Register DetermineRegister(byte opcodeByte)
         {
-            var register = (opcodeByte > 0xC0) ? ((opcodeByte & 0b0011_1000) >> 3) : (opcodeByte & 0b0000_0111);
+            var register = opcodeByte > 0xC0 ? (opcodeByte & 0b0011_1000) >> 3 : opcodeByte & 0b0000_0111;
             return register switch
             {
                 0b000 => Register.B,
@@ -68,7 +68,7 @@ namespace JIT8080.Generator
             Opcodes8080.ORI => OpCodes.Or,
             Opcodes8080.CMP => OpCodes.Sub,
             Opcodes8080.CPI => OpCodes.Sub,
-            _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, "Invalid opcode for 8 bit arithmetic"),
+            _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, "Invalid opcode for 8 bit arithmetic")
         };
 
         private static bool UseCarryInOperation(Opcodes8080 opcode) => opcode switch
@@ -77,7 +77,7 @@ namespace JIT8080.Generator
             Opcodes8080.SBB => true,
             Opcodes8080.ACI => true,
             Opcodes8080.SBI => true,
-            _ => false,
+            _ => false
         };
 
         private static bool WriteResult(Opcodes8080 opcode) => opcode != Opcodes8080.CMP && opcode != Opcodes8080.CPI; 
@@ -133,15 +133,14 @@ namespace JIT8080.Generator
             }
         }
 
-        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals, FieldBuilder memoryBusField,
-            FieldBuilder ioHandlerField)
+        void IEmitter.Emit(ILGenerator methodIL, CpuInternalBuilders internals)
         {
             var result = methodIL.DeclareLocal(typeof(int));
 
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldarg_0);
             methodIL.Emit(OpCodes.Ldfld, internals.A);
-            LoadSource(methodIL, internals, memoryBusField);
+            LoadSource(methodIL, internals, internals.MemoryBusField);
             methodIL.Emit(_arithmeticOpCode);
             if (_useCarryInOperation)
             {
@@ -168,7 +167,7 @@ namespace JIT8080.Generator
                 case Opcodes8080.CMP:
                 case Opcodes8080.CPI:
                 case Opcodes8080.SUI:
-                    LoadSource(methodIL, internals, memoryBusField);
+                    LoadSource(methodIL, internals, internals.MemoryBusField);
                     methodIL.Emit(OpCodes.Ldarg_0);
                     methodIL.Emit(OpCodes.Ldfld, internals.A);
                     methodIL.Emit(OpCodes.Cgt);
@@ -176,7 +175,7 @@ namespace JIT8080.Generator
                     break;
                 case Opcodes8080.SBB:
                 case Opcodes8080.SBI:
-                    LoadSource(methodIL, internals, memoryBusField);
+                    LoadSource(methodIL, internals, internals.MemoryBusField);
                     methodIL.Emit(OpCodes.Ldarg_0);
                     methodIL.Emit(OpCodes.Ldfld, internals.CarryFlag);
                     methodIL.Emit(OpCodes.Add);
@@ -234,7 +233,7 @@ namespace JIT8080.Generator
             Opcodes8080.ORI => $"{_opcode} {_operand:X2}",
             Opcodes8080.CMP => $"{_opcode} {_register}",
             Opcodes8080.CPI => $"{_opcode} {_operand:X2}",
-            _ => throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode, "Invalid 8 bit ALU opcode"),
+            _ => throw new ArgumentOutOfRangeException(nameof(_opcode), _opcode, "Invalid 8 bit ALU opcode")
         };
     }
 }
