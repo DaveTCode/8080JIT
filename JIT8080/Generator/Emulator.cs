@@ -491,10 +491,8 @@ namespace JIT8080.Generator
                     AuxCarryFlag = t.GetField("AuxCarryFlag"),
                     ParityFlag = t.GetField("ParityFlag"),
                     CarryFlag = t.GetField("CarryFlag"),
-                    Result = t.GetField("Result"),
                     GetFlagRegister = t.GetMethod("GetFlagRegister"),
                     SetFlagRegister = t.GetMethod("SetFlagRegister"),
-                    InterruptEnable = t.GetField("InterruptEnable")
                 },
                 Emulator = Activator.CreateInstance(t, memoryBus, ioHandler, renderer),
                 Run = t.GetMethod("Run")
