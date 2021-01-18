@@ -15,11 +15,7 @@ namespace CPMEmulator
             };
             var application = new CPMApplication(rom);
             application.Emulator = Emulator.CreateEmulator(application.CompleteProgram(), application, application, application, application, 0x100);
-
-            Console.WriteLine("Emulator Created");
             var runDelegate = (Action) application.Emulator.Run.CreateDelegate(typeof(Action), application.Emulator.Emulator);
-            
-            Console.WriteLine("Delegate Created");
 
             runDelegate();
         }

@@ -19,12 +19,7 @@ namespace SpaceInvadersJIT
             var interruptUtils = new SpaceInvadersInterruptUtils();
             application.InitialiseWindow();
             var emulator = Emulator.CreateEmulator(rom, application, application, application, interruptUtils);
-
-            Console.WriteLine("Emulator Created");
             var runDelegate = (Action) emulator.Run.CreateDelegate(typeof(Action), emulator.Emulator);
-            
-            Console.WriteLine("Delegate Created");
-
             runDelegate();
         }
     }
