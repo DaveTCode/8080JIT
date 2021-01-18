@@ -29,21 +29,14 @@ namespace JIT8080.Generator
         public MethodInfo HL;
 
         public FieldInfo StackPointer;
-
-        // TODO - Do I need to track a program counter as well?
-
-        // TODO - Are any of these flags replaceable with native BR instructions in CLR IL? Seems like no but not 100% sure.
+        
         public FieldInfo SignFlag;
         public FieldInfo ZeroFlag;
         public FieldInfo AuxCarryFlag;
         public FieldInfo ParityFlag;
         public FieldInfo CarryFlag;
-        
-        public FieldInfo Result;
 
         public MethodInfo GetFlagRegister;
         public MethodInfo SetFlagRegister;
-
-        public FieldInfo InterruptEnable;
     }
 }

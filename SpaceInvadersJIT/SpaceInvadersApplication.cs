@@ -24,7 +24,7 @@ namespace SpaceInvadersJIT
         
         private readonly Stopwatch _stopwatch = new ();
 
-        private byte[] _portStatus = { 0b0000_1000, 0b0000_0000 };
+        private readonly byte[] _portStatus = { 0b0000_1000, 0b0000_0000 };
         
         private readonly Dictionary<SDL2.SDL_Keycode, SpaceInvadersKey> _keyMap = new()
         {
