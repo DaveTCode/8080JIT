@@ -43,6 +43,8 @@ dotnet run -c Release --project CPMEmulator -- roms/test/8080PRE.COM
 8080 Preliminary tests complete
 ```
 
+Note that the 8080TST.COM rom doesn't pass because DAA/AuxCarry is not implemented
+
 ## References
 
 - [Space Invaders Architecture](https://computerarcheology.com/Arcade/SpaceInvaders/)
